@@ -1,0 +1,571 @@
+In [112]: ls
+models.py  notebooks/
+
+In [113]: adata.var["hej"] = np.random.random(10)
+---------------------------------------------------------------------------
+ValueError                                Traceback (most recent call last)
+<ipython-input-130-f1139b9d0ef5> in <module>
+----> 1 adata.var["hej"] = np.random.random(10)
+
+~/.local/lib/python3.7/site-packages/pandas/core/frame.py in __setitem__(self, key, value)
+   3161         else:
+   3162             # set column
+-> 3163             self._set_item(key, value)
+   3164 
+   3165     def _setitem_slice(self, key: slice, value):
+
+~/.local/lib/python3.7/site-packages/pandas/core/frame.py in _set_item(self, key, value)
+   3240         """
+   3241         self._ensure_valid_index(value)
+-> 3242         value = self._sanitize_column(key, value)
+   3243         NDFrame._set_item(self, key, value)
+   3244 
+
+~/.local/lib/python3.7/site-packages/pandas/core/frame.py in _sanitize_column(self, key, value, broadcast)
+   3897 
+   3898             # turn me into an ndarray
+-> 3899             value = sanitize_index(value, self.index)
+   3900             if not isinstance(value, (np.ndarray, Index)):
+   3901                 if isinstance(value, list) and len(value) > 0:
+
+~/.local/lib/python3.7/site-packages/pandas/core/internals/construction.py in sanitize_index(data, index)
+    750     if len(data) != len(index):
+    751         raise ValueError(
+--> 752             "Length of values "
+    753             f"({len(data)}) "
+    754             "does not match length of index "
+
+ValueError: Length of values (10) does not match length of index (1)
+
+In [131]: adata.shape
+Out[131]: (10, 1)
+
+In [132]: adata.obs["hej"] = np.random.random(10)
+
+In [133]: adata
+Out[133]: 
+AnnData object with n_obs × n_vars = 10 × 1
+    obs: 'hej'
+
+In [134]: adata.var
+Out[138]: 
+Empty DataFrame
+Columns: []
+Index: [0]
+
+In [139]: adata.obs
+Out[139]: 
+        hej
+0  0.552784
+1  0.464628
+2  0.876056
+3  0.410237
+4  0.116468
+5  0.325433
+6  0.341477
+7  0.541129
+8  0.986224
+9  0.851976
+
+In [140]: adata.X[0,:]
+Out[146]: array([0.], dtype=float32)
+
+In [147]: adata.X[2,:]
+Out[147]: array([0.], dtype=float32)
+
+In [148]: adata.X[3,:]
+Out[148]: array([0.], dtype=float32)
+
+In [149]: adata.obs
+Out[162]: 
+        hej
+0  0.552784
+1  0.464628
+2  0.876056
+3  0.410237
+4  0.116468
+5  0.325433
+6  0.341477
+7  0.541129
+8  0.986224
+9  0.851976
+
+In [163]: adata = ad.AnnData()
+
+In [176]: adata
+Out[176]: AnnData object with n_obs × n_vars = 0 × 0
+
+In [177]: x = np.random.random((4,5))
+
+In [186]: y = np.random.random((4,2))
+
+In [187]: adata.X = x
+---------------------------------------------------------------------------
+ValueError                                Traceback (most recent call last)
+<ipython-input-190-691ca4ab3ca0> in <module>
+----> 1 adata.X = x
+
+~/.local/lib/python3.7/site-packages/anndata/_core/anndata.py in X(self, value)
+    680         else:
+    681             raise ValueError(
+--> 682                 f"Data matrix has wrong shape {value.shape}, "
+    683                 f"need to be {self.shape}."
+    684             )
+
+ValueError: Data matrix has wrong shape (4, 5), need to be (0, 0).
+
+In [191]: adata_x = ad.AnnData(x)
+
+In [206]: adata_y = ad.AnnData(y)
+
+In [207]: adata_x
+Out[209]: AnnData object with n_obs × n_vars = 4 × 5
+
+In [210]: adata_y
+Out[210]: AnnData object with n_obs × n_vars = 4 × 2
+
+In [211]: ad.concat(adata_y,adata_x)
+---------------------------------------------------------------------------
+TypeError                                 Traceback (most recent call last)
+<ipython-input-212-6a23d54148e0> in <module>
+----> 1 ad.concat(adata_y,adata_x)
+
+TypeError: concat() takes 1 positional argument but 2 were given
+
+In [213]: ad.concat((adata_y,adata_x))
+Observation names are not unique. To make them unique, call `.obs_names_make_unique`.
+Out[219]: AnnData object with n_obs × n_vars = 8 × 2
+
+In [220]: ad.concat((adata_y,adata_x),axis = 1)
+Variable names are not unique. To make them unique, call `.var_names_make_unique`.
+Out[230]: AnnData object with n_obs × n_vars = 4 × 7
+
+In [231]: z = ad.concat((adata_y,adata_x),axis = 1)
+Variable names are not unique. To make them unique, call `.var_names_make_unique`.
+
+In [232]: z
+Out[232]: AnnData object with n_obs × n_vars = 4 × 7
+
+In [233]: z.X
+Out[235]: 
+array([[0.31037316, 0.41081628, 0.7635412 , 0.55389506, 0.00490137,
+        0.6758957 , 0.9431501 ],
+       [0.00728227, 0.647573  , 0.8581797 , 0.70489866, 0.5907987 ,
+        0.00768917, 0.30258143],
+       [0.7336406 , 0.32150033, 0.969496  , 0.8362192 , 0.03522968,
+        0.7225927 , 0.8146348 ],
+       [0.6217334 , 0.37608078, 0.61811936, 0.20932993, 0.40575555,
+        0.7569562 , 0.9710535 ]], dtype=float32)
+
+In [236]: z.X.shape
+Out[236]: (4, 7)
+
+In [237]: adata.x.obsm['spatial'] = np.random.random((4,2))
+---------------------------------------------------------------------------
+AttributeError                            Traceback (most recent call last)
+<ipython-input-257-c450c50f756a> in <module>
+----> 1 adata.x.obsm['spatial'] = np.random.random((4,2))
+
+AttributeError: 'AnnData' object has no attribute 'x'
+
+In [258]: adata_x.obsm['spatial'] = np.random.random((4,2))
+
+In [259]: z = ad.concat((adata_x,adata_y),axis = 1)
+Variable names are not unique. To make them unique, call `.var_names_make_unique`.
+
+In [260]: z
+Out[261]: AnnData object with n_obs × n_vars = 4 × 7
+
+In [262]: z.obsm
+Out[268]: AxisArrays with keys: 
+
+In [269]: z = ad.concat((adata_x,adata_y),axis = 1,merge = 'first')
+Variable names are not unique. To make them unique, call `.var_names_make_unique`.
+
+In [282]: z
+Out[282]: 
+AnnData object with n_obs × n_vars = 4 × 7
+    obsm: 'spatial'
+
+In [283]: z.var.columns = ['X' + str(x) for x in range(7)]
+---------------------------------------------------------------------------
+ValueError                                Traceback (most recent call last)
+<ipython-input-331-38877da0f783> in <module>
+----> 1 z.var.columns = ['X' + str(x) for x in range(7)]
+
+~/.local/lib/python3.7/site-packages/pandas/core/generic.py in __setattr__(self, name, value)
+   5476         try:
+   5477             object.__getattribute__(self, name)
+-> 5478             return object.__setattr__(self, name, value)
+   5479         except AttributeError:
+   5480             pass
+
+pandas/_libs/properties.pyx in pandas._libs.properties.AxisProperty.__set__()
+
+~/.local/lib/python3.7/site-packages/pandas/core/generic.py in _set_axis(self, axis, labels)
+    668     def _set_axis(self, axis: int, labels: Index) -> None:
+    669         labels = ensure_index(labels)
+--> 670         self._mgr.set_axis(axis, labels)
+    671         self._clear_item_cache()
+    672 
+
+~/.local/lib/python3.7/site-packages/pandas/core/internals/managers.py in set_axis(self, axis, new_labels)
+    219         if new_len != old_len:
+    220             raise ValueError(
+--> 221                 f"Length mismatch: Expected axis has {old_len} elements, new "
+    222                 f"values have {new_len} elements"
+    223             )
+
+ValueError: Length mismatch: Expected axis has 0 elements, new values have 7 elements
+
+In [332]: enumerate
+Out[335]: enumerate
+
+In [336]: z
+Out[336]: 
+AnnData object with n_obs × n_vars = 4 × 7
+    obsm: 'spatial'
+
+In [337]: z.columns = ['X' + str(x) for x in range(7)]
+
+In [338]: x
+Out[338]: 
+array([[0.76354124, 0.55389505, 0.00490137, 0.67589569, 0.94315009],
+       [0.85817969, 0.70489867, 0.5907987 , 0.00768917, 0.30258143],
+       [0.969496  , 0.83621918, 0.03522968, 0.72259268, 0.81463481],
+       [0.61811934, 0.20932993, 0.40575555, 0.75695621, 0.9710535 ]])
+
+In [339]: z
+Out[339]: 
+AnnData object with n_obs × n_vars = 4 × 7
+    obsm: 'spatial'
+
+In [340]: adata.obs
+Out[346]: 
+Empty DataFrame
+Columns: []
+Index: []
+
+In [347]: adata.obs is None
+Out[347]: False
+
+In [348]: pd.isempty( adata.obs)
+---------------------------------------------------------------------------
+NameError                                 Traceback (most recent call last)
+<ipython-input-361-52a973d2fa44> in <module>
+----> 1 pd.isempty( adata.obs)
+
+NameError: name 'pd' is not defined
+
+In [362]: import pandas as pd
+
+In [363]: pd.isempty( adata.obs)
+---------------------------------------------------------------------------
+AttributeError                            Traceback (most recent call last)
+<ipython-input-363-52a973d2fa44> in <module>
+----> 1 pd.isempty( adata.obs)
+
+~/.local/lib/python3.7/site-packages/pandas/__init__.py in __getattr__(name)
+    242         return _SparseArray
+    243 
+--> 244     raise AttributeError(f"module 'pandas' has no attribute '{name}'")
+    245 
+    246 
+
+AttributeError: module 'pandas' has no attribute 'isempty'
+
+In [364]: 
+
+In [364]: adata.obs.empty
+Out[367]: True
+
+In [368]: adata_x
+Out[368]: 
+AnnData object with n_obs × n_vars = 4 × 5
+    obsm: 'spatial'
+
+In [369]: adata_x.var = pd.Dataframe(np.zeros((4,3)))
+---------------------------------------------------------------------------
+AttributeError                            Traceback (most recent call last)
+<ipython-input-383-b546b2959206> in <module>
+----> 1 adata_x.var = pd.Dataframe(np.zeros((4,3)))
+
+~/.local/lib/python3.7/site-packages/pandas/__init__.py in __getattr__(name)
+    242         return _SparseArray
+    243 
+--> 244     raise AttributeError(f"module 'pandas' has no attribute '{name}'")
+    245 
+    246 
+
+AttributeError: module 'pandas' has no attribute 'Dataframe'
+
+In [384]: adata_x.var = pd.DataFrame(np.zeros((4,3)))
+---------------------------------------------------------------------------
+ValueError                                Traceback (most recent call last)
+<ipython-input-384-81a22c07b718> in <module>
+----> 1 adata_x.var = pd.DataFrame(np.zeros((4,3)))
+
+~/.local/lib/python3.7/site-packages/anndata/_core/anndata.py in var(self, value)
+    855     @var.setter
+    856     def var(self, value: pd.DataFrame):
+--> 857         self._set_dim_df(value, "var")
+    858 
+    859     @var.deleter
+
+~/.local/lib/python3.7/site-packages/anndata/_core/anndata.py in _set_dim_df(self, value, attr)
+    781         if not isinstance(value, pd.DataFrame):
+    782             raise ValueError(f"Can only assign pd.DataFrame to {attr}.")
+--> 783         value_idx = self._prep_dim_index(value.index, attr)
+    784         if self.is_view:
+    785             self._init_as_actual(self.copy())
+
+~/.local/lib/python3.7/site-packages/anndata/_core/anndata.py in _prep_dim_index(self, value, attr)
+    794         if self.shape[attr == "var"] != len(value):
+    795             raise ValueError(
+--> 796                 f"Length of passed value for {attr}_names is {len(value)}, but this AnnData has shape: {self.shape}"
+    797             )
+    798         if isinstance(value, pd.Index) and not isinstance(
+
+ValueError: Length of passed value for var_names is 4, but this AnnData has shape: (4, 5)
+
+In [385]: adata_x.var = pd.DataFrame(np.zeros((5,3)))
+
+In [389]: adata  C-c C-c
+KeyboardInterrupt escaped interact()
+
+
+In [390]: z = ad.concat((adata_x,adata_y),axis = 1,merge = 'first')
+
+In [391]: z
+Out[391]: 
+AnnData object with n_obs × n_vars = 4 × 7
+    obsm: 'spatial'
+
+In [392]: z.var
+Out[401]: 
+Empty DataFrame
+Columns: []
+Index: [0, 1, 2, 3, 4, 0, 1]
+
+In [402]: adata_x.var
+Out[405]: 
+     0    1    2
+0  0.0  0.0  0.0
+1  0.0  0.0  0.0
+2  0.0  0.0  0.0
+3  0.0  0.0  0.0
+4  0.0  0.0  0.0
+
+In [406]: z = ad.concat((adata_x,adata_y),axis = 1,merge = 'first')
+
+In [407]: z = ad.concat((adata_x,adata_y),axis = 1,merge = 'first')
+
+In [408]: z = ad.concat((adata_x,adata_y),axis = 1,merge = 'first')
+
+In [409]: z
+Out[411]: 
+AnnData object with n_obs × n_vars = 4 × 7
+    obsm: 'spatial'
+
+In [412]: z = ad.concat((adata_x,adata_y),axis = 1,merge = 'first')
+
+In [413]: z
+Out[413]: 
+AnnData object with n_obs × n_vars = 4 × 7
+    obsm: 'spatial'
+
+In [414]: z.var
+Out[414]: 
+Empty DataFrame
+Columns: []
+Index: [0, 1, 2, 3, 4, 0, 1]
+
+In [415]: z.var
+Out[415]: 
+Empty DataFrame
+Columns: []
+Index: [0, 1, 2, 3, 4, 0, 1]
+
+In [416]: z = ad.concat((adata_x,adata_y),axis = 1,merge = 'first')
+
+In [417]: z
+Out[417]: 
+AnnData object with n_obs × n_vars = 4 × 7
+    obsm: 'spatial'
+
+In [418]: z.var
+Out[418]: 
+Empty DataFrame
+Columns: []
+Index: [0, 1, 2, 3, 4, 0, 1]
+
+In [419]: adata_y.var = pd.DataFrame(np.zeros((4,3)))
+---------------------------------------------------------------------------
+ValueError                                Traceback (most recent call last)
+<ipython-input-420-5fdecc4615a2> in <module>
+----> 1 adata_y.var = pd.DataFrame(np.zeros((4,3)))
+
+~/.local/lib/python3.7/site-packages/anndata/_core/anndata.py in var(self, value)
+    855     @var.setter
+    856     def var(self, value: pd.DataFrame):
+--> 857         self._set_dim_df(value, "var")
+    858 
+    859     @var.deleter
+
+~/.local/lib/python3.7/site-packages/anndata/_core/anndata.py in _set_dim_df(self, value, attr)
+    781         if not isinstance(value, pd.DataFrame):
+    782             raise ValueError(f"Can only assign pd.DataFrame to {attr}.")
+--> 783         value_idx = self._prep_dim_index(value.index, attr)
+    784         if self.is_view:
+    785             self._init_as_actual(self.copy())
+
+~/.local/lib/python3.7/site-packages/anndata/_core/anndata.py in _prep_dim_index(self, value, attr)
+    794         if self.shape[attr == "var"] != len(value):
+    795             raise ValueError(
+--> 796                 f"Length of passed value for {attr}_names is {len(value)}, but this AnnData has shape: {self.shape}"
+    797             )
+    798         if isinstance(value, pd.Index) and not isinstance(
+
+ValueError: Length of passed value for var_names is 4, but this AnnData has shape: (4, 2)
+
+In [421]: z = ad.concat((adata_x,adata_y),axis = 1,merge = 'first')
+
+In [422]: adata_y.var = pd.DataFrame(np.zeros((4,3)))
+---------------------------------------------------------------------------
+ValueError                                Traceback (most recent call last)
+<ipython-input-422-5fdecc4615a2> in <module>
+----> 1 adata_y.var = pd.DataFrame(np.zeros((4,3)))
+
+~/.local/lib/python3.7/site-packages/anndata/_core/anndata.py in var(self, value)
+    855     @var.setter
+    856     def var(self, value: pd.DataFrame):
+--> 857         self._set_dim_df(value, "var")
+    858 
+    859     @var.deleter
+
+~/.local/lib/python3.7/site-packages/anndata/_core/anndata.py in _set_dim_df(self, value, attr)
+    781         if not isinstance(value, pd.DataFrame):
+    782             raise ValueError(f"Can only assign pd.DataFrame to {attr}.")
+--> 783         value_idx = self._prep_dim_index(value.index, attr)
+    784         if self.is_view:
+    785             self._init_as_actual(self.copy())
+
+~/.local/lib/python3.7/site-packages/anndata/_core/anndata.py in _prep_dim_index(self, value, attr)
+    794         if self.shape[attr == "var"] != len(value):
+    795             raise ValueError(
+--> 796                 f"Length of passed value for {attr}_names is {len(value)}, but this AnnData has shape: {self.shape}"
+    797             )
+    798         if isinstance(value, pd.Index) and not isinstance(
+
+ValueError: Length of passed value for var_names is 4, but this AnnData has shape: (4, 2)
+
+In [423]: adata_y.var = pd.DataFrame(np.zeros((5,3)))
+---------------------------------------------------------------------------
+ValueError                                Traceback (most recent call last)
+<ipython-input-423-f69036345579> in <module>
+----> 1 adata_y.var = pd.DataFrame(np.zeros((5,3)))
+
+~/.local/lib/python3.7/site-packages/anndata/_core/anndata.py in var(self, value)
+    855     @var.setter
+    856     def var(self, value: pd.DataFrame):
+--> 857         self._set_dim_df(value, "var")
+    858 
+    859     @var.deleter
+
+~/.local/lib/python3.7/site-packages/anndata/_core/anndata.py in _set_dim_df(self, value, attr)
+    781         if not isinstance(value, pd.DataFrame):
+    782             raise ValueError(f"Can only assign pd.DataFrame to {attr}.")
+--> 783         value_idx = self._prep_dim_index(value.index, attr)
+    784         if self.is_view:
+    785             self._init_as_actual(self.copy())
+
+~/.local/lib/python3.7/site-packages/anndata/_core/anndata.py in _prep_dim_index(self, value, attr)
+    794         if self.shape[attr == "var"] != len(value):
+    795             raise ValueError(
+--> 796                 f"Length of passed value for {attr}_names is {len(value)}, but this AnnData has shape: {self.shape}"
+    797             )
+    798         if isinstance(value, pd.Index) and not isinstance(
+
+ValueError: Length of passed value for var_names is 5, but this AnnData has shape: (4, 2)
+
+In [424]: adata_y.var = pd.DataFrame(np.zeros((5,3)))
+---------------------------------------------------------------------------
+ValueError                                Traceback (most recent call last)
+<ipython-input-427-f69036345579> in <module>
+----> 1 adata_y.var = pd.DataFrame(np.zeros((5,3)))
+
+~/.local/lib/python3.7/site-packages/anndata/_core/anndata.py in var(self, value)
+    855     @var.setter
+    856     def var(self, value: pd.DataFrame):
+--> 857         self._set_dim_df(value, "var")
+    858 
+    859     @var.deleter
+
+~/.local/lib/python3.7/site-packages/anndata/_core/anndata.py in _set_dim_df(self, value, attr)
+    781         if not isinstance(value, pd.DataFrame):
+    782             raise ValueError(f"Can only assign pd.DataFrame to {attr}.")
+--> 783         value_idx = self._prep_dim_index(value.index, attr)
+    784         if self.is_view:
+    785             self._init_as_actual(self.copy())
+
+~/.local/lib/python3.7/site-packages/anndata/_core/anndata.py in _prep_dim_index(self, value, attr)
+    794         if self.shape[attr == "var"] != len(value):
+    795             raise ValueError(
+--> 796                 f"Length of passed value for {attr}_names is {len(value)}, but this AnnData has shape: {self.shape}"
+    797             )
+    798         if isinstance(value, pd.Index) and not isinstance(
+
+ValueError: Length of passed value for var_names is 5, but this AnnData has shape: (4, 2)
+
+In [428]: adata_y.var = pd.DataFrame(np.zeros((3,3)))
+---------------------------------------------------------------------------
+ValueError                                Traceback (most recent call last)
+<ipython-input-428-8c68ae160ae3> in <module>
+----> 1 adata_y.var = pd.DataFrame(np.zeros((3,3)))
+
+~/.local/lib/python3.7/site-packages/anndata/_core/anndata.py in var(self, value)
+    855     @var.setter
+    856     def var(self, value: pd.DataFrame):
+--> 857         self._set_dim_df(value, "var")
+    858 
+    859     @var.deleter
+
+~/.local/lib/python3.7/site-packages/anndata/_core/anndata.py in _set_dim_df(self, value, attr)
+    781         if not isinstance(value, pd.DataFrame):
+    782             raise ValueError(f"Can only assign pd.DataFrame to {attr}.")
+--> 783         value_idx = self._prep_dim_index(value.index, attr)
+    784         if self.is_view:
+    785             self._init_as_actual(self.copy())
+
+~/.local/lib/python3.7/site-packages/anndata/_core/anndata.py in _prep_dim_index(self, value, attr)
+    794         if self.shape[attr == "var"] != len(value):
+    795             raise ValueError(
+--> 796                 f"Length of passed value for {attr}_names is {len(value)}, but this AnnData has shape: {self.shape}"
+    797             )
+    798         if isinstance(value, pd.Index) and not isinstance(
+
+ValueError: Length of passed value for var_names is 3, but this AnnData has shape: (4, 2)
+
+In [429]: adata_y.var = pd.DataFrame(np.zeros((2,3)))
+
+In [430]: z = ad.concat((adata_x,adata_y),axis = 1,merge = 'first')
+/home/alma/.local/lib/python3.7/site-packages/anndata/_core/anndata.py:119: ImplicitModificationWarning: Transforming to str index.
+  warnings.warn("Transforming to str index.", ImplicitModificationWarning)
+Variable names are not unique. To make them unique, call `.var_names_make_unique`.
+
+In [431]: x
+Out[431]: 
+array([[0.76354124, 0.55389505, 0.00490137, 0.67589569, 0.94315009],
+       [0.85817969, 0.70489867, 0.5907987 , 0.00768917, 0.30258143],
+       [0.969496  , 0.83621918, 0.03522968, 0.72259268, 0.81463481],
+       [0.61811934, 0.20932993, 0.40575555, 0.75695621, 0.9710535 ]])
+
+In [432]: z
+Out[432]: 
+AnnData object with n_obs × n_vars = 4 × 7
+    var: 0, 1, 2
+    obsm: 'spatial'
+
+In [433]: a = pd.Index(['A','b'])
+
+In [450]: b = pd.Index(['C','d'])
