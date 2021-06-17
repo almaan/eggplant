@@ -179,11 +179,13 @@ def get_landmark_distance(adata: ad.AnnData,
     lmk_crd = adata.uns["curated_landmarks"].copy()
     # obs_crd /= max_obs_crd
     # lmk_crd /= max_obs_crd
+    if isinstance(lmk_crd,pd.DataFrame):
+        lmk_crd = lmk_crd.values
 
     for obs in range(n_obs):
         obs_x,obs_y = obs_crd[obs,:]
         for lmk in range(n_landmarks):
-            lmk_x,lmk_y = lmk_crd.values[lmk,:]
+            lmk_x,lmk_y = lmk_crd[lmk,:]
             distances[obs,lmk] = ((obs_x - lmk_x)**2 + (obs_y-lmk_y)**2)**0.5
 
     adata.obsm[landmark_distance_key] = distances
