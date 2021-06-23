@@ -3,12 +3,14 @@ import gpytorch as gp
 import anndata as ad
 import numpy as np
 
+import copy
+
 import utils as ut
 import pandas as pd
 
 import scanpy as sc
 
-from typing import Optional,List,Tuple,Union
+from typing import Optional,List,Tuple,Union,Dict
 
 
 
@@ -20,14 +22,25 @@ class GPModel(gp.models.ExactGP):
                  likelihood: Optional[gp.likelihoods.Likelihood]=None,
                  mean_fun: Optional[gp.means.Mean]=None,
                  covar_fun: Optional[gp.kernels.Kernel] = None,
+                 kernel_fun: Optional[gp.kernels.Kernel] = None,
+                 device: str = "cpu",
+                 lengthscale_prior: Optional[float] = None,
                  )->None:
 
         self.S = landmark_distances.shape[0]
         self.L = landmark_distances.shape[1]
         self.G = (feature_values.shape[1] if len(feature_values.shape) > 1 else 1)
 
+        if device == "gpu":
+            self.device = t.device('cuda' if torch.cuda.is_available() else 'cpu')
+        else:
+            self.device = "cpu"
+
         self.ldists = landmark_distances
         self.features = feature_values
+
+        self.ldists = self.ldists.to(device = self.device)
+        self.features = self.features.to(device = self.device)
 
         if landmark_names is None:
             self.landmark_names = ["L{}".format(x) for x in range(self.L)]
@@ -36,6 +49,7 @@ class GPModel(gp.models.ExactGP):
 
         if likelihood is None:
             likelihood = gp.likelihoods.GaussianLikelihood()
+            likelihood = likelihood.to(device = self.device)
 
         super().__init__(landmark_distances,
                          feature_values,
@@ -46,9 +60,34 @@ class GPModel(gp.models.ExactGP):
             self.mean_module = gp.means.ConstantMean()
 
         if covar_fun is None:
-            self.covar_module = gp.kernels.ScaleKernel(gp.kernels.RQKernel())
+            if kernel_fun is None:
+                kernel = gp.kernels.RQKernel(lengthscale_prior = lengthscale_prior)
+            else:
+                kernel = kernel_fun(lengthscale_prior = lengthscale_prior)
+
+            self.covar_module = gp.kernels.ScaleKernel(kernel)
 
         self.mll = gp.mlls.ExactMarginalLogLikelihood
+
+        self._loss_history: Optional[List[float]] = None
+        self.n_epochs = 0
+
+    @property
+    def loss_history(self,)->List[float]:
+        if self._loss_history is not None:
+            return copy.deepcopy(self._loss_history)
+
+    @loss_history.setter
+    def loss_history(self,
+                     history: List[float],
+                     )->None:
+        if self._loss_history is None:
+            self._loss_history  = history
+        else:
+            self._loss_history += history
+
+        self.n_epochs = len(self._loss_history)
+
 
     def forward(self,
                 x: t.tensor,
@@ -64,6 +103,7 @@ class Reference:
     def __init__(self,
                  domain: Union[t.tensor,np.ndarray],
                  landmarks: Union[t.tensor,np.ndarray,pd.DataFrame],
+                 meta: Optional[Union[pd.DataFrame,dict]] = None
                  )->None:
 
         if isinstance(domain,np.ndarray):
@@ -85,13 +125,22 @@ class Reference:
         self.S = self.ldists.shape[0]
         self.L = self.landmarks.shape[0]
 
-        self.adata = ad.AnnData()
+        if meta is not None:
+            if isinstance(meta,dict):
+                meta_df = pd.DataFrame(meta)
+            else:
+                meta_df = meta
+
+            self.adata = ad.AnnData(np.empty((self.S,1)),obs = meta_df)
+        else:
+            self.adata = ad.AnnData()
 
         self.n_models = 0
 
     def transfer(self,
                  models: Union[GPModel,List[GPModel]],
                  meta: Optional[pd.DataFrame] = None,
+                 names: Optional[List[str]] = None,
                  )->None:
 
         if not isinstance(models,list):
@@ -109,8 +158,11 @@ class Reference:
                 add_mat[:,k] = pred.mean.detach().numpy()
 
         tmp_anndata = ad.AnnData(add_mat)
-        tmp_anndata.columns = [f"sample_{x}" for x in\
-                               range(self.n_models,self.n_models + add_models)]
+        if names is None:
+            tmp_anndata.columns = [f"sample_{x}" for x in\
+                                range(self.n_models,self.n_models + add_models)]
+        else:
+            tmp_anndata.columns = names[self.n_models:self.n_models + add_models]
 
         if self.n_models > 0:
             if meta is not None:
@@ -133,23 +185,26 @@ class Reference:
 
             self.adata.var = new_meta
         else:
+            if self.adata.obs is not None:
+                tmp_anndata.obs = self.adata.obs
             self.adata = tmp_anndata
             # self.adata.var = meta
             self.adata.var.index = tmp_anndata.columns
 
         self.n_models = self.n_models + add_models
+        self.adata.obsm["spatial"] = self.domain
 
-
-    def get_sample(self,idx: Union[str,int])->Tuple[np.ndarray,np.ndarray]:
+    def get_sample(self,
+                   idx: Union[str,int],
+                   **kwargs,
+                   )->Tuple[np.ndarray,np.ndarray]:
 
         if isinstance(idx,int):
-            idx = "sample_{}".format(idx)
-        expr = self.adata.obs_vector(idx)
+            idx = "sample_{}".format(idx,**kwargs)
+        expr = self.adata.obs_vector(idx,**kwargs)
         crd = self.adata.obsm["spatial"]
 
         return crd,expr
-
-
 
     def plot(self,
              samples: Optional[Union[List[str],str]] = None,

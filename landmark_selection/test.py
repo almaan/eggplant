@@ -22,19 +22,24 @@ def get_image_from_anndata(adata: ad.AnnData,
 
     spatial = adata.uns["spatial"]
     sample_name = get_adata_sample_name(adata)
-    image = spatial[sample_name]["images"]["hires"].astype("uint8")
+    image = spatial[sample_name]["images"]["hires"]
+    if image.max() < 1:
+        image = image / image.max() * 255
+    image = image.astype("uint8")
     image = Image.fromarray(image).convert("RGBA")
 
-    im_w,im_h = image.size
-    im_w = float(im_w)
-    im_h = float(im_h)
-    sf = 500/ im_w 
-
-    resized_image = image.resize((int(im_w * sf),int(im_h * sf)),Image.ANTIALIAS)
-
     scalefactor = spatial[sample_name]["scalefactors"]["tissue_hires_scalef"]
-    scalefactor *= sf
-    scalefactor = 1 / scalefactor
+
+    if max(image.size) > 500:
+        im_w,im_h = image.size
+        im_w = float(im_w)
+        im_h = float(im_h)
+        sf = 500/ im_w 
+
+        resized_image = image.resize((int(im_w * sf),int(im_h * sf)),Image.ANTIALIAS)
+
+        scalefactor *= sf
+        scalefactor = 1 / scalefactor
 
     return resized_image,scalefactor
 
@@ -204,8 +209,8 @@ class MainWindow(QMainWindow):
         xs = [(p.x() - self.margin)*self.scalefactor for p in self. points]
         ys = [(p.y() - self.margin)*self.scalefactor for p in self. points]
         index = ["Landmark_{}".format(x) for x in range(len(self.points))]
-        df = pd.DataFrame(dict(x_cord = xs,
-                               y_cord = ys,
+        df = pd.DataFrame(dict(x_coord = xs,
+                               y_coord = ys,
                                ),
                         index = index,
                         )

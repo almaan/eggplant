@@ -13,8 +13,10 @@ from scipy.spatial.distance import cdist
 from scipy.sparse import csr_matrix
 from numba import njit
 
-from typing import List,Dict,Union
+from typing import List,Dict,Union,Optional
 import numbers
+
+import models as m
 
 
 def find_landmark_candidates(adata: ad.AnnData,
@@ -153,15 +155,14 @@ def match_landmarks(adatas : List[ad.AnnData],
             dmat[:,col] = np.inf
             landmark_id[row] = col
 
-        # que_adata.uns["curated_landmarks"] = dict(expression = que_expr[landmark_id,:],
-        #                                           spatial = que_landmark[landmark_id,:],
-        #                                          )
         que_adata.uns["curated_landmarks"] = que_landmark[landmark_id,:]
 
 
 def get_landmark_distance(adata: ad.AnnData,
                           landmark_position_key: str = "curated_landmarks",
                           landmark_distance_key: str = "landmark_distances",
+                          reference : Optional[Union[m.Reference,np.ndarray]] = None,
+                          **kwargs,
                           )->None:
 
     assert "spatial" in adata.obsm,\
@@ -177,10 +178,23 @@ def get_landmark_distance(adata: ad.AnnData,
     obs_crd = adata.obsm["spatial"].copy()
     max_obs_crd = obs_crd.max()
     lmk_crd = adata.uns["curated_landmarks"].copy()
-    # obs_crd /= max_obs_crd
-    # lmk_crd /= max_obs_crd
+
     if isinstance(lmk_crd,pd.DataFrame):
         lmk_crd = lmk_crd.values
+
+    if reference is not None:
+        import morphops as mops
+        if isinstance(reference,m.Reference):
+            ref_lmk_crd = reference.landmarks.numpy()
+        if isinstance(reference,np.ndarray):
+            ref_lmk_crd = reference
+
+        obs_crd = mops.tps_warp(lmk_crd,ref_lmk_crd,obs_crd)
+        lmk_crd = mops.tps_warp(lmk_crd,ref_lmk_crd,lmk_crd)
+        plt.scatter(obs_crd[:,0],obs_crd[:,1])
+        plt.scatter(lmk_crd[:,0],lmk_crd[:,1])
+        plt.show()
+
 
     for obs in range(n_obs):
         obs_x,obs_y = obs_crd[obs,:]
