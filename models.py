@@ -27,14 +27,18 @@ class GPModel(gp.models.ExactGP):
                  lengthscale_prior: Optional[float] = None,
                  )->None:
 
+        print(device)
+
         self.S = landmark_distances.shape[0]
         self.L = landmark_distances.shape[1]
         self.G = (feature_values.shape[1] if len(feature_values.shape) > 1 else 1)
 
-        if device == "gpu":
-            self.device = t.device('cuda' if torch.cuda.is_available() else 'cpu')
+        if device == "cuda" or device =="gpu":
+            self.device = t.device('cuda' if t.cuda.is_available() else 'cpu')
         else:
             self.device = "cpu"
+	
+        print(self.device)
 
         self.ldists = landmark_distances
         self.features = feature_values
@@ -49,7 +53,7 @@ class GPModel(gp.models.ExactGP):
 
         if likelihood is None:
             likelihood = gp.likelihoods.GaussianLikelihood()
-            likelihood = likelihood.to(device = self.device)
+        likelihood = likelihood.to(device = self.device)
 
         super().__init__(landmark_distances,
                          feature_values,
@@ -152,11 +156,12 @@ class Reference:
         add_mat = np.zeros((self.S,add_models))
 
         for k,m in enumerate(_models):
+            m = m.to(m.device)
             pos = np.array([self.lmk_to_pos[x] for x in m.landmark_names])
             with t.no_grad(), gp.settings.fast_pred_var():
-                pred = m.likelihood(m(self.ldists[:,pos]))
-                add_mat[:,k] = pred.mean.detach().numpy()
-
+                pred = m.likelihood(m(self.ldists[:,pos].to(m.device)))
+                add_mat[:,k] = pred.mean.cpu().detach().numpy()
+            m = m.cpu()
         tmp_anndata = ad.AnnData(add_mat)
         if names is None:
             tmp_anndata.columns = [f"sample_{x}" for x in\

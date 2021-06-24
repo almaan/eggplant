@@ -11,7 +11,21 @@ import models as m
 import utils as ut
 from functools import reduce
 from contextlib import nullcontext
+import gc
 
+def optimizer_to(optimizer,device):
+    for param in optimizer.state.values():
+        # Not sure there are any global tensors in the state dict
+        if isinstance(param, t.Tensor):
+            param.data = param.data.to(device)
+            if param._grad is not None:
+                param._grad.data = param._grad.data.to(device)
+        elif isinstance(param, dict):
+            for subparam in param.values():
+                if isinstance(subparam, t.Tensor):
+                    subparam.data = subparam.data.to(device)
+                    if subparam._grad is not None:
+                        subparam._grad.data = subparam._grad.data.to(device)
 
 
 def fit(model: m.GPModel,
@@ -23,6 +37,7 @@ def fit(model: m.GPModel,
 
     model.train()
     model.likelihood.train()
+    model.to(model.device)
 
     if optimizer is None:
         optimizer =  t.optim.Adam(model.parameters(), lr=0.01)
@@ -40,17 +55,31 @@ def fit(model: m.GPModel,
             loss = -loss_fun(sample,model.features)
             loss.backward()
             optimizer.step()
-            loss_history.append(loss.item())
+            loss_history.append(loss.detach().item())
 
-
+    print(t.cuda.memory_allocated())
+    model = model.to(t.device("cpu"))
+    with t.no_grad():
+        del sample
+        loss = loss.cpu()
+        del loss
+        optimizer_to(optimizer,t.device("cpu"))
+        del optimizer
+        gc.collect()
+        t.cuda.empty_cache()
+        
     model.loss_history = loss_history
     model.eval()
     model.likelihood.eval()
+    print(model)
+    print(model.parameters())
+    print(t.cuda.memory_allocated())
 
 
 def map_to_reference(adatas: Union[ad.AnnData,List[ad.AnnData],Dict[str,ad.AnnData]],
                      feature: str,
                      reference: m.Reference,
+		     device: str = "cpu",
                      n_epochs: int = 1000,
                      **kwargs,
                      )->Dict[str,m.GPModel]:
@@ -85,6 +114,7 @@ def map_to_reference(adatas: Union[ad.AnnData,List[ad.AnnData],Dict[str,ad.AnnDa
 
         model = m.GPModel(t.tensor(landmark_distances.astype(np.float32)),
                           t.tensor(feature_values.astype(np.float32)),
+			  device = device,
                           **kwargs,
                           )
 
@@ -99,9 +129,9 @@ def map_to_reference(adatas: Union[ad.AnnData,List[ad.AnnData],Dict[str,ad.AnnDa
                            )
 
         if names is None:
-            models[f"Model_{k}"] = model
+            models[f"Model_{k}"] = model.cpu()
         else:
-            models[names[k]] = model
+            models[names[k]] = model.cpu()
 
     return models
 
