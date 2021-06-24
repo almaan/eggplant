@@ -57,29 +57,25 @@ def fit(model: m.GPModel,
             optimizer.step()
             loss_history.append(loss.detach().item())
 
-    print(t.cuda.memory_allocated())
     model = model.to(t.device("cpu"))
+    # cleanup cuda memory
     with t.no_grad():
-        del sample
         loss = loss.cpu()
-        del loss
-        optimizer_to(optimizer,t.device("cpu"))
-        del optimizer
+        optimizer_to(optimizer,
+                     t.device("cpu"))
+        del optimizer,loss,sample
         gc.collect()
         t.cuda.empty_cache()
-        
+
     model.loss_history = loss_history
     model.eval()
     model.likelihood.eval()
-    print(model)
-    print(model.parameters())
-    print(t.cuda.memory_allocated())
 
 
 def map_to_reference(adatas: Union[ad.AnnData,List[ad.AnnData],Dict[str,ad.AnnData]],
                      feature: str,
                      reference: m.Reference,
-		     device: str = "cpu",
+                     device: str = "cpu",
                      n_epochs: int = 1000,
                      **kwargs,
                      )->Dict[str,m.GPModel]:

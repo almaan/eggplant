@@ -37,8 +37,6 @@ class GPModel(gp.models.ExactGP):
             self.device = t.device('cuda' if t.cuda.is_available() else 'cpu')
         else:
             self.device = "cpu"
-	
-        print(self.device)
 
         self.ldists = landmark_distances
         self.features = feature_values
@@ -234,4 +232,4 @@ class Reference:
                       )
         if isinstance(samples,str) and samples == "average":
             self.adata.obs = self.adata.obs.drop(["average"],
-                                                axis=1)
+                                                 axis=1)
