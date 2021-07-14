@@ -352,51 +352,9 @@ def match_scales(adata: ad.AnnData,
         pass
 
 
-
-
-def sctransform_normalize(x: np.ndarray,
-                          **kwargs,
-                          ):
-
-    from os.path import dirname,abspath
-    from os.path import join as pjoin
-    import pandas as pd
-    import rpy2.robjects as robjects
-    import rpy2.robjects.numpy2ri
-    from rpy2.robjects import pandas2ri
-    from rpy2.robjects.packages import importr
-
-    rdir = pjoin(abspath(dirname(__file__)),"rfuncs")
-
-    future = importr("future")
-    sctransform = importr("sctransform")
-    mass = importr("MASS")
-    mS = importr("matrixStats")
-
-
-
-    pandas2ri.activate()
-
-    X = pd.DataFrame(x.T)
-    X = pandas2ri.DataFrame(X)
-
-    robjects.r['source'](pjoin(rdir,'vst.R'))
-    robjects.r['source'](pjoin(rdir,'utils.R'))
-    robjects.r['source'](pjoin(rdir,'fit.R'))
-    robjects.r['source'](pjoin(rdir,'RcppExports.R'))
-
-    Y = robjects.r["vst"](X,**kwargs)
-    Y = dict(zip(Y.names,list(Y)))
-    genes = np.array(Y["genes"]).astype(int)
-    Y = Y["y"]
-
-    pandas2ri.deactivate()
-
-    return Y.T,genes
-
-def normalize_jointly(adatas:List[ad.AnnData],
-                      **kwargs,
-                      )->None:
+def join_adatas(adatas:List[ad.AnnData],
+                **kwargs,
+                )->None:
 
 
     obs = np.array([0] + [a.shape[0] for a in adatas])
@@ -411,21 +369,36 @@ def normalize_jointly(adatas:List[ad.AnnData],
                                 columns = features,
                                 )
 
+    joint_obs = pd.DataFrame([])
+    joint_obsm = {k:[] for k in adatas[0].obsm.keys()}
+
     for k,adata in enumerate(adatas):
         inter_features = features.intersection(adata.var.index)
         joint_matrix.loc[starts[k]:(starts[k+1]-1),inter_features] = adata.to_df().loc[:,inter_features].values
+        tmp_obs = adata.obs.copy()
+        tmp_obs["split_id"] = k
+        joint_obs = pd.concat((joint_obs,
+                              tmp_obs))
+
+        for key in joint_obsm.keys():
+            print(adatas[k].obsm[key].shape)
+            joint_obsm[key].append(adatas[k].obsm[key])
+
+    for key in joint_obsm.keys():
+        joint_obsm[key] = np.concatenate(joint_obsm[key])
 
 
-    joint_matrix,genes = sctransform_normalize(joint_matrix.values,
-                                                      **kwargs)
-    joint_matrix = pd.DataFrame(joint_matrix,
-                                columns = features[genes])
+    var = pd.DataFrame(features.values,
+                       index = features,
+                       columns = ["features"],
+                       )
 
-    for k,adata in enumerate(adatas):
-        inter_features = features[genes].intersection(adata.var.index)
-        new_x = joint_matrix.loc[starts[k]:(starts[k+1]-1),inter_features]
-        adatas[k] = adata[:,inter_features]
-        if isinstance(adata.X,csr_matrix):
-            adatas[k].X = csr_matrix(new_x)
-        else:
-            adatas[k].X = new_x
+    adata = ad.AnnData(joint_matrix,
+                       obs = joint_obs,
+                       var = var,
+                       )
+
+    adata.obsm = joint_obsm
+
+    return adata
+

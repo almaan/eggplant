@@ -60,8 +60,8 @@ def obj_to_list(obj: T)->List[T]:
     else:
         return obj
 
-def match_data_frames(df_a,
-                      df_b,
+def match_data_frames(df_a: pd.DataFrame,
+                      df_b: pd.DataFrame,
                       )->pd.DataFrame:
 
 
@@ -89,8 +89,6 @@ def spatial_smoothing(adata: ad.AnnData,
                       sigma: float = 50,
                       **kwargs,
                       )->None:
-
-    #TODO: add feature selection
 
     spatial_key = kwargs.get("spatial_key","spatial")
     if spatial_key not in adata.obsm.keys():
