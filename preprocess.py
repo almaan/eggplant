@@ -17,6 +17,7 @@ from typing import List,Dict,Union,Optional
 import numbers
 
 import models as m
+from pathlib import Path
 
 
 def find_landmark_candidates(adata: ad.AnnData,
@@ -24,11 +25,6 @@ def find_landmark_candidates(adata: ad.AnnData,
                              n_spatial_neighbors = 6,
                              **kwargs,
                              )->None:
-
-    # if isinstance(adata.X,csc_matrix):
-    #     X = adata.X.todense()
-    # else:
-    #     X = adata.X
 
     X = adata.X
 
@@ -176,7 +172,6 @@ def get_landmark_distance(adata: ad.AnnData,
 
     distances = np.zeros((n_obs,n_landmarks))
     obs_crd = adata.obsm["spatial"].copy()
-    max_obs_crd = obs_crd.max()
     lmk_crd = adata.uns["curated_landmarks"].copy()
 
     if isinstance(lmk_crd,pd.DataFrame):
@@ -191,10 +186,6 @@ def get_landmark_distance(adata: ad.AnnData,
 
         obs_crd = mops.tps_warp(lmk_crd,ref_lmk_crd,obs_crd)
         lmk_crd = mops.tps_warp(lmk_crd,ref_lmk_crd,lmk_crd)
-        plt.scatter(obs_crd[:,0],obs_crd[:,1])
-        plt.scatter(lmk_crd[:,0],lmk_crd[:,1])
-        plt.show()
-
 
     for obs in range(n_obs):
         obs_x,obs_y = obs_crd[obs,:]
@@ -204,12 +195,21 @@ def get_landmark_distance(adata: ad.AnnData,
 
     adata.obsm[landmark_distance_key] = distances
 
-def reference_to_grid(ref_img: Image.Image,
+def reference_to_grid(ref_img: Union[Image.Image,str],
                       n_approx_points: int = 1e4,
                       background_color:Union[str,Union[np.ndarray,tuple]] = "white",
                       n_regions: int = 2,
                       )->np.ndarray:
+
     from scipy.interpolate import griddata
+
+    if isinstance(ref_img,str):
+        ref_img_pth = Path(ref_img)
+        if ref_img_pth.exists():
+            ref_img = Image.open(ref_img_pth)
+        else:
+            raise FileNotFoundError(f"The file {ref_img_pth} cannot be found."\
+            " Please enter a different image path.")
 
     w,h = ref_img.size
     new_w = 500
@@ -227,7 +227,7 @@ def reference_to_grid(ref_img: Image.Image,
         elif isinstance(background_color,numbers.Number):
             background_color = np.array(background_color)
         else:
-            raise Exception("color format not supported")
+            raise ValueError(f"Color format {background_color} not supported.")
 
         km = KMeans(n_clusters = n_regions + 1)
         nw,nh,nc = img.shape
@@ -256,7 +256,7 @@ def reference_to_grid(ref_img: Image.Image,
         reg_img = np.ones(img.shape)
         reg_img[img == 0] = -1
     else:
-        raise Exception("wrong image format, must be grayscale or color")
+        raise Exception("Wrong image format, must be grayscale or color")
 
 
     f_ref = img.sum() / (img.shape[0] * img.shape[1])
@@ -298,12 +298,25 @@ def reference_to_grid(ref_img: Image.Image,
     return crd[:,[1,0]],meta
 
 def match_scales(adata: ad.AnnData,
-                 reference_landmarks: np.ndarray,
+                 reference: Union[np.ndarray,"m.Reference"],
                  )->None:
 
     n_lmk_thrs = 100
-    obs_lmk = adata.uns["curated_landmarks"]
-    ref_lmk = reference_landmarks
+
+    obs_lmk = adata.uns["curated_landmarks"].copy()
+    if isinstance(obs_lmk,pd.DataFrame):
+        obs_lmk = obs_lmk.values
+
+    if isinstance(reference,m.Reference):
+        ref_lmk = reference.landmarks.detach().numpy()
+    elif isinstance(reference,pd.DataFrame):
+        ref_lmk = reference.values
+    elif isinstance(reference,np.ndarray):
+        ref_lmk = reference
+    else:
+        NotImplementedError("reference of type : {} is not supported".\
+                            format(type(reference))
+                            )
 
     n_lmk =  len(ref_lmk)
     n_use_lmk = min(n_lmk,n_lmk_thrs)
@@ -330,11 +343,15 @@ def match_scales(adata: ad.AnnData,
     adata.obsm["spatial"] = adata.obsm["spatial"] * av_ratio
     adata.uns["curated_landmarks"] = adata.uns["curated_landmarks"] * av_ratio
 
-    sample_name = list(adata.uns["spatial"].keys())[0]
+    try:
+        sample_name = list(adata.uns["spatial"].keys())[0]
+        for scalef in ["tissue_hires_scalef","tissue_lowres_scalef"]:
+            old_sf = adata.uns["spatial"][sample_name]["scalefactors"].get(scalef,1)
+            adata.uns["spatial"][sample_name]["scalefactors"][scalef] = old_sf / av_ratio
+    except:
+        pass
 
-    for scalef in ["tissue_hires_scalef","tissue_lowres_scalef"]:
-        old_sf = adata.uns["spatial"][sample_name]["scalefactors"].get(scalef,1)
-        adata.uns["spatial"][sample_name]["scalefactors"][scalef] = old_sf / av_ratio
+
 
 
 def sctransform_normalize(x: np.ndarray,
@@ -412,5 +429,3 @@ def normalize_jointly(adatas:List[ad.AnnData],
             adatas[k].X = csr_matrix(new_x)
         else:
             adatas[k].X = new_x
-
-    # return adatas

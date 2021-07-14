@@ -12,6 +12,8 @@ import scanpy as sc
 
 from typing import Optional,List,Tuple,Union,Dict
 
+import constants as C
+
 
 
 class GPModel(gp.models.ExactGP):
@@ -26,8 +28,6 @@ class GPModel(gp.models.ExactGP):
                  device: str = "cpu",
                  lengthscale_prior: Optional[float] = None,
                  )->None:
-
-        print(device)
 
         self.S = landmark_distances.shape[0]
         self.L = landmark_distances.shape[1]
@@ -116,8 +116,15 @@ class Reference:
         elif isinstance(landmarks,pd.DataFrame):
             self.lmk_to_pos = {l:k for k,l in enumerate(landmarks.index.values)}
 
-        self.domain = domain
-        self.landmarks = t.tensor(landmarks)
+
+        mn = t.min(domain)
+        mx = t.max(domain)
+
+        self.fwd_coordinate_transform = lambda x: (x-mn) / ( mx -mn )
+        self.rev_coordinate_transform = lambda x: x * (mx-mn) + mn
+
+        self.domain = self.fwd_coordinate_transform(domain)
+        self.landmarks = self.fwd_coordinate_transform(t.tensor(landmarks))
         self.ldists = t.cdist(self.domain,
                               self.landmarks,
                               p = 2,
@@ -127,28 +134,40 @@ class Reference:
         self.S = self.ldists.shape[0]
         self.L = self.landmarks.shape[0]
 
+        self._initialize(meta)
+
+    def _initialize(self,
+                    meta: Optional[Union[pd.DataFrame,dict]] = None,
+                    )->None:
+
         if meta is not None:
             if isinstance(meta,dict):
                 meta_df = pd.DataFrame(meta)
             else:
                 meta_df = meta
 
-            self.adata = ad.AnnData(np.empty((self.S,1)),obs = meta_df)
+            self.adata = ad.AnnData(np.empty((self.S,1)),
+                                    obs = meta_df)
         else:
             self.adata = ad.AnnData()
 
         self.n_models = 0
 
+
+    def clean(self,)->None:
+        meta = self.adata.obs
+        del self.adata
+        self._initialize(meta)
+
     def transfer(self,
                  models: Union[GPModel,List[GPModel]],
                  meta: Optional[pd.DataFrame] = None,
-                 names: Optional[List[str]] = None,
+                 names: Optional[Union[List[str],str]] = None,
                  )->None:
 
-        if not isinstance(models,list):
-            _models = [models]
-        else:
-            _models = models
+
+        _models = ut.obj_to_list(models)
+        names = ut.obj_to_list(names)
 
         add_models = len(_models)
         add_mat = np.zeros((self.S,add_models))
@@ -156,16 +175,18 @@ class Reference:
         for k,m in enumerate(_models):
             m = m.to(m.device)
             pos = np.array([self.lmk_to_pos[x] for x in m.landmark_names])
-            with t.no_grad(), gp.settings.fast_pred_var():
-                pred = m.likelihood(m(self.ldists[:,pos].to(m.device)))
-                add_mat[:,k] = pred.mean.cpu().detach().numpy()
+            with t.no_grad():
+                out = m(self.ldists[:,pos].to(m.device))
+                add_mat[:,k] = out.mean.cpu().detach().numpy()
             m = m.cpu()
+
         tmp_anndata = ad.AnnData(add_mat)
+
         if names is None:
-            tmp_anndata.columns = [f"sample_{x}" for x in\
-                                range(self.n_models,self.n_models + add_models)]
+            tmp_anndata.columns = [f"Transfer_{x}" for x in\
+                                   range(self.n_models,self.n_models + add_models)]
         else:
-            tmp_anndata.columns = names[self.n_models:self.n_models + add_models]
+            tmp_anndata.columns = names
 
         if self.n_models > 0:
             if meta is not None:
@@ -179,20 +200,18 @@ class Reference:
                                                 pd.DataFrame([],
                                                              index=tmp_anndata.columns,
                                                 ))
-
             self.adata = ad.concat((self.adata,
                                     tmp_anndata),
                                     axis = 1,
                                     merge = "first",
                                    )
-
             self.adata.var = new_meta
         else:
-            if self.adata.obs is not None:
-                tmp_anndata.obs = self.adata.obs
             self.adata = tmp_anndata
-            # self.adata.var = meta
             self.adata.var.index = tmp_anndata.columns
+            if meta is not None:
+                self.adata.obs = meta
+
 
         self.n_models = self.n_models + add_models
         self.adata.obsm["spatial"] = self.domain
@@ -233,3 +252,5 @@ class Reference:
         if isinstance(samples,str) and samples == "average":
             self.adata.obs = self.adata.obs.drop(["average"],
                                                  axis=1)
+
+

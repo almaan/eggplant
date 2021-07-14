@@ -7,7 +7,58 @@ from scipy.sparse import spmatrix
 import anndata as ad
 
 import matplotlib.pyplot as plt
-from typing import Union,Optional,Dict,List,Tuple
+from typing import Union,Optional,Dict,List,Tuple,Any,TypeVar
+
+T = TypeVar('T')
+
+def pd_to_np(x: Union[pd.DataFrame,np.ndarray])->np.ndarray:
+    if isinstance(x,pd.DataFrame):
+        return x.values
+    else:
+        return x
+
+
+def get_figure_dims(n_total: int,
+                    n_rows: Optional[int] = None,
+                    n_cols: Optional[int] = None,
+                    )->Tuple[int,int]:
+
+    if n_rows is None and n_cols is None:
+        n_sqrt = int(np.ceil((np.sqrt(n_total))))
+        n_rows,n_cols = n_sqrt,n_sqrt
+    elif n_cols is not None:
+        n_rows = int(np.ceil(n_total / n_cols))
+    else:
+        n_cols = int(np.ceil(n_total / n_rows))
+
+    return n_rows,n_cols
+
+def _get_feature(adata,feature):
+
+    if feature in adata.var.index:
+        get_feature = lambda x: x.obs_vector(feature)
+    elif feature in adata.obs.index:
+        get_feature = lambda x: x.var_vector(feature)
+    elif adata.obsm.keys() is not None:
+        get_feature = None
+        for key in adata.obsm.keys():
+            if hasattr(adata.obsm[key],"columns") and\
+               feature in adata.obsm[key].columns:
+                get_feature = lambda x: x.obsm[key][feature].values
+                break
+        if get_feature is None:
+            raise ValueError
+        else:
+            raise ValueError
+
+    return get_feature
+
+
+def obj_to_list(obj: T)->List[T]:
+    if not isinstance(obj,list):
+        return [obj]
+    else:
+        return obj
 
 def match_data_frames(df_a,
                       df_b,
@@ -80,50 +131,3 @@ def spatial_smoothing(adata: ad.AnnData,
         new_X = sp_type(new_X)
 
     adata.layers["smoothed"] = new_X
-
-
-def model_diagnostics(models: Union[Dict[str,"m.GPModel"],"m.GPModel"],
-                      n_cols: int = 5,
-                      width: float = 5,
-                      height: float = 3,
-                      return_figure: bool = False,
-                      )->Optional[Tuple[plt.Figure,plt.axes]]:
-
-    if not isinstance(models,dict):
-        models = {"Model_0":models}
-
-    n_models = len(models)
-
-    n_cols = min(n_models,n_cols)
-    if n_cols == n_models:
-        n_rows = 1
-    else:
-        n_rows = int(np.ceil(n_models / n_cols))
-
-
-    figsize = (n_cols * width,n_rows * height )
-    fig,ax = plt.subplots(n_rows,n_cols,figsize = figsize,facecolor ="white")
-    ax = ax.flatten()
-
-    for k,(name,model) in enumerate(models.items()):
-        n_epochs = model.n_epochs
-        ax[k].set_title(name + f" | Epochs : {n_epochs}",fontsize = 15)
-        ax[k].plot(model.loss_history,
-                   linestyle = "solid",
-                   color = "black",
-                   )
-        ax[k].spines["top"].set_visible(False)
-        ax[k].spines["right"].set_visible(False)
-        ax[k].set_xlabel("Epoch",fontsize = 20)
-        ax[k].set_ylabel("Loss",fontsize = 20)
-
-    for axx in ax[k+1::]:
-        axx.axis("off")
-
-    fig.tight_layout()
-
-    if return_figure:
-        return fig,ax
-    else:
-        plt.show()
-        return None
