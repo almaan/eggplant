@@ -6,55 +6,13 @@ from typing import Union
 from scipy.sparse import spmatrix
 import anndata as ad
 
-import models as m
-import utils as ut
-import constants as C
+from . import models as m
+from . import utils as ut
+from . import constants as C
 
 import matplotlib.pyplot as plt
 from typing import Union,Optional,Dict,List,Tuple,Any,TypeVar
 
-
-def visualize_transfer(reference: m.Reference,
-                       **kwargs,
-                       )->None:
-    counts = reference.adata.X
-    lmks = reference.landmarks.detach().numpy()
-    crds = reference.domain.detach().numpy()
-    names = reference.adata.var.index.tolist()
-    n_reps = counts.shape[1]
-    data = [[counts[:,x] for x in range(n_reps)]]
-    for v in [lmks,crds]:
-        data.append([v for _ in range(n_reps)])
-
-    data.append(names)
-
-    return _visualize(data,**kwargs)
-
-def visualize_observed(adatas: Union[Dict[str,ad.AnnData],List[ad.AnnData]],
-                       feature: str,
-                       **kwargs,
-                       )->None:
-
-    if isinstance(adatas,dict):
-        _adatas = adatas.values()
-        names = list(adatas.keys())
-        get_feature = ut._get_feature(list(_adatas)[0],
-                                      feature)
-
-    else:
-        _adatas = adatas
-        names = ["Observation_{}".format(k) for k in range(len(adatas))]
-
-        get_feature = ut._get_feature(_adatas[0],
-                                      feature)
-
-    counts = [get_feature(a) for a in _adatas]
-    lmks = [ut.pd_to_np(a.uns["curated_landmarks"]) for a in _adatas]
-    crds = [a.obsm["spatial"] for a in _adatas]
-
-    data = [counts,lmks,crds,names]
-
-    return _visualize(data,**kwargs)
 
 
 def _visualize(data:List[Union[np.ndarray,List[str]]],
@@ -74,9 +32,60 @@ def _visualize(data:List[Union[np.ndarray,List[str]]],
                fontsize: str = 20,
                hspace: Optional[float] = None,
                wspace: Optional[float] = None,
+               quantile_scaling: bool = False,
+               flip_y: bool = False,
                **kwargs,
                )->Optional[Union[Tuple[Tuple[plt.Figure,plt.Axes],Tuple[plt.Figure,plt.Axes]],
-                  Tuple[plt.Figure,plt.Axes]]]:
+                                 Tuple[plt.Figure,plt.Axes]]]:
+
+    """
+
+    n_cols: Optional[int]
+        number of desired colums
+    n_rows: Optional[int]
+        number of desired rows
+    marker_size: float
+        scatter plot marker size
+    show_landmarks: bool
+        show landmarks in plot
+    landmark_marker_size: float
+        size of landmarks
+    side_size: float
+        side size for each figure sublot
+    landmark_cmap: Optional[Dict[int,str]]
+        colormap for landmarks
+    share_colorscale: bool
+        set to true if subplots should all have the same colorscale
+    return_figures: bool
+        set to true if figure and axes objects should be returned
+    include_colorbar: bool
+        set to true to include colorbar
+    separate_colorbar: bool
+        set to true if colorbar should be plotted in separate figure,
+        only possible when share_colorscale = True
+    colorbar_orientation: str
+        choose between 'horizontal' and 'vertical' for orientation of colorbar
+    include_title: bool
+        set to true to include title
+    fontsize: str 
+        font size of title
+    hspace: Optional[float]
+       height space between subplots. If none then default matplotlib settings are used.
+    wspace: Optional[float]
+       width space between subplots. If none then default matplotlib settings are used.
+    quantile_scaling: bool
+       set to true to use quantile scaling. Can help to minimize quenching effect
+       of outliers.
+    flip_y: bool
+        set to true if y-axis should be flipped
+
+    Returns:
+    --------
+
+    None or Figure and Axes objects,
+    depending on return_figure value.
+
+    """
 
     counts,lmks,crds,names = data
 
@@ -101,21 +110,33 @@ def _visualize(data:List[Union[np.ndarray,List[str]]],
     if landmark_cmap is None:
         landmark_cmap = C.LANDMARK_CMAP
 
+    if quantile_scaling:
+        if share_colorscale:
+            vmin = np.repeat(min([np.quantile(c,0.01) for c in counts]),
+                             len(counts))
 
-    if share_colorscale:
-        vmin = min([c.min() for c in counts])
-        vmax = max([c.max() for c in counts])
+            vmax = np.repeat(max([np.quantile(c,0.99) for c in counts]),
+                             len(counts))
+
+        else:
+            vmin = np.array([np.quantile(c,0.01) for c in counts])
+            vmax = np.array([np.quantile(c,0.99) for c in counts])
     else:
-        vmin = None
-        vmax = None
+        if share_colorscale:
+            vmin = [min([c.min() for c in counts])] * len(counts)
+            vmax = [max([c.max() for c in counts])] * len(counts)
+        else:
+            vmin = [None] * len(counts)
+            vmax = [None] * len(counts)
+    print(vmax,vmin)
 
     for k in range(len(counts)):
         _sc = ax[k].scatter(crds[k][:,0],
                             crds[k][:,1],
                             c = counts[k],
-                            s = 30,
-                            vmin = vmin,
-                            vmax = vmax,
+                            s = marker_size,
+                            vmin = vmin[k],
+                            vmax = vmax[k],
                             **kwargs)
 
 
@@ -140,6 +161,8 @@ def _visualize(data:List[Union[np.ndarray,List[str]]],
 
         ax[k].set_aspect("equal")
         ax[k].axis("off")
+        if flip_y:
+            ax[k].invert_yaxis()
 
     for axx in ax[k+1::]:
         axx.axis("off")
@@ -223,4 +246,84 @@ def model_diagnostics(models: Optional[Union[Dict[str,"m.GPModel"],"m.GPModel"]]
     else:
         plt.show()
         return None
+
+def set_vizdoc(func):
+    """hack to transfer documentation"""
+    func.__doc__ = func.__doc__ + _visualize.__doc__
+
+    return func
+
+@set_vizdoc
+def visualize_transfer(reference: m.Reference,
+                       layer: Optional[str] = None,
+                       **kwargs,
+                       )->None:
+
+    """
+    Visualize results after transfer to reference
+
+    Parameters:
+    ----------
+    reference: m.Reference
+        reference object to which data has been transferred
+    layer: str
+       name of layer to use
+    """
+
+    if layer is not None:
+        counts = reference.adata.layers[layer]
+    else:
+        counts = reference.adata.X
+    lmks = reference.landmarks.detach().numpy()
+    crds = reference.domain.detach().numpy()
+    names = reference.adata.var.index.tolist()
+    n_reps = counts.shape[1]
+    data = [[counts[:,x] for x in range(n_reps)]]
+    for v in [lmks,crds]:
+        data.append([v for _ in range(n_reps)])
+
+    data.append(names)
+
+    return _visualize(data,**kwargs)
+
+@set_vizdoc
+def visualize_observed(adatas: Union[Dict[str,ad.AnnData],List[ad.AnnData]],
+                       feature: str,
+                       **kwargs,
+                       )->None:
+    """
+    Visualize observed data to be transferred
+
+    Parameters:
+    ----------
+
+    adatas: Union[Dict[str,ad.AnnData],List[ad.AnnData]]
+        List or dictionary of AnnData objects holding the,
+        data to be transferred.
+    feature: str
+        Name of feature to be visualized
+    """
+
+
+    if isinstance(adatas,dict):
+        _adatas = adatas.values()
+        names = list(adatas.keys())
+        get_feature = ut._get_feature(list(_adatas)[0],
+                                      feature)
+
+    else:
+        _adatas = adatas
+        names = ["Observation_{}".format(k) for k in range(len(adatas))]
+
+        get_feature = ut._get_feature(_adatas[0],
+                                      feature)
+
+    counts = [get_feature(a) for a in _adatas]
+    lmks = [ut.pd_to_np(a.uns["curated_landmarks"]) for a in _adatas]
+    crds = [a.obsm["spatial"] for a in _adatas]
+
+    data = [counts,lmks,crds,names]
+
+    return _visualize(data,**kwargs)
+
 

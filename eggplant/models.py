@@ -5,14 +5,14 @@ import numpy as np
 
 import copy
 
-import utils as ut
 import pandas as pd
-
 import scanpy as sc
 
 from typing import Optional,List,Tuple,Union,Dict
 
-import constants as C
+from . import constants as C
+from . import utils as ut
+
 
 
 
@@ -114,7 +114,10 @@ class Reference:
             landmarks = t.tensor(landmarks.astype(np.float32))
             self.lmk_to_pos = {"L{}".format(x):x for x in range(len(landmarks))}
         elif isinstance(landmarks,pd.DataFrame):
+            landmarks = landmarks.values
             self.lmk_to_pos = {l:k for k,l in enumerate(landmarks.index.values)}
+        elif isinstance(landmarks,t.tensor):
+            self.lmk_to_pos = {"L{}".format(x):x for x in range(len(landmarks))}
 
 
         mn = t.min(domain)

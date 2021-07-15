@@ -16,143 +16,8 @@ from numba import njit
 from typing import List,Dict,Union,Optional
 import numbers
 
-import models as m
+from . import models as m
 from pathlib import Path
-
-
-def find_landmark_candidates(adata: ad.AnnData,
-                             neighbor_fraction_threshold = 0.5,
-                             n_spatial_neighbors = 6,
-                             **kwargs,
-                             )->None:
-
-    X = adata.X
-
-    if "neighbors_key" in kwargs:
-        if "distances" not in adata.obsp[kwargs["neighbors_key"]]:
-            if "neighbors" not in adata.uns:
-                sc.pp.neighbors(adata,
-                                n_neighbors=kwargs.get("embedding_neighbors",4),
-                                neighbors_key=kwargs["neighbors_key"],
-                               )
-            sc.tl.umap(adata,neighbors_key=kwargs["neighbors_key"])
-
-        em_gr = adata.obsp[kwargs["neighbors_key"]]["distances"]
-        em_conn = adata.obsp[kwargs["neighbors_key"]]["connectivities"]
-    else:
-        if "distances" not in adata.obsp:
-            if "neighbors" not in adata.obsp:
-                sc.pp.neighbors(adata,
-                               n_neighbors=n_spatial_neighbors,
-                               )
-
-            sc.tl.umap(adata)
-
-        em_gr = adata.obsp["distances"]
-        em_conn = adata.obsp["connectivities"]
-
-    sp_gr = adata.obsp["spatial_connectivities"]
-
-    landmarks = []
-    expression = []
-
-    for ii in range(adata.shape[0]):
-        em_ptr = slice(em_gr.indptr[ii],em_gr.indptr[ii+1])
-        sp_ptr = slice(sp_gr.indptr[ii],sp_gr.indptr[ii+1])
-        em_ind = em_gr.indices[em_ptr]
-        sp_ind = sp_gr.indices[sp_ptr]
-
-        em_ind = set(em_ind)
-        sp_ind = set(sp_ind)
-        em_n_sp = list(em_ind.intersection(sp_ind))
-
-        neighbor_fraction = len(em_n_sp) / n_spatial_neighbors
-
-        if neighbor_fraction >= neighbor_fraction_threshold:
-            sp_crd = adata.obsm["spatial"][em_n_sp] 
-            ws = em_conn.data[em_n_sp]
-            ws = ws/ ws.sum()
-            ws = ws[:,np.newaxis]
-            sp_crd = (sp_crd * ws).sum(axis=0)
-            landmarks.append(sp_crd)
-            sel_X = X[em_n_sp,:]
-            if isinstance(sel_X,csr_matrix):
-                sel_X = np.array(sel_X.todense())
-
-            expr = (sel_X * ws).sum(axis=0)
-            expression.append(expr)
-
-    landmarks = np.array(landmarks)
-    expression = np.array(expression)
-
-    res = dict(spatial = landmarks,
-               expression = expression,
-              )
-
-    adata.uns["raw_landmarks"] = res
-
-def match_landmarks(adatas : List[ad.AnnData],
-                    max_landmarks:int = 10,
-                    n_iter = 1,
-                   )->None:
-
-    assert all(["raw_landmarks" in a.uns for a in adatas]),\
-        "Missing raw_landmarks in uns. Apply "
-
-    n_samples = len(adatas)
-    ref_adata = adatas[0]
-    ref_expr = ref_adata.uns["raw_landmarks"]["expression"].copy()
-
-    n_landmarks_sample = [a.uns["raw_landmarks"]["spatial"].shape[0] for \
-                          a in adatas]
-
-    n_landmarks = min(min(n_landmarks_sample),max_landmarks)
-    order = np.argsort(n_landmarks_sample)
-    adatas = [adatas[x] for x in order]
-
-    new_ref_expr = np.zeros((n_landmarks,
-                             ref_expr.shape[1]))
-    for it in range(n_iter):
-        start = (1 if it == 0 else 0)
-        for k in range(start,n_samples):
-                que_adata = adatas[k]
-                que_expr = que_adata.uns["raw_landmarks"]["expression"]
-                print(que_expr)
-                if k == 1 and it == 0:
-                    dmat = cdist(ref_expr,que_expr,metric = "cosine")
-                else:
-                    dmat = cdist(new_ref_expr,que_expr,metric = "cosine")
-
-                pairs = np.zeros((n_landmarks,2),dtype = np.int)
-                for p in range(n_landmarks):
-                    row,col = np.unravel_index(np.argmin(dmat),
-                                               dmat.shape)
-                    dmat[row,:] = np.inf
-                    dmat[:,col] = np.inf
-                    pairs[p,:] = (row,col)
-
-                if (k == 1 and it == 0) or (k == 0 and it > 0):
-                    new_ref_expr = (ref_expr[pairs[:,0],:] + \
-                                    que_expr[pairs[:,1],:]) / 2
-                else:
-                    new_ref_expr[pairs[:,0],:] = new_ref_expr[pairs[:,0],:] * \
-                        (k-1) / k  + que_expr[pairs[:,1],:] /k 
-
-    for k in range(n_samples):
-        que_adata = adatas[k]
-        que_expr = que_adata.uns["raw_landmarks"]["expression"]
-        que_landmark = que_adata.uns["raw_landmarks"]["spatial"]
-        dmat = cdist(new_ref_expr,que_expr,metric = "cosine")
-        landmark_id = np.zeros(n_landmarks,dtype = np.int)
-
-        for row in range(n_landmarks):
-            col = np.argmin(dmat[row,:])
-            dmat[row,:] = np.inf
-            dmat[:,col] = np.inf
-            landmark_id[row] = col
-
-        que_adata.uns["curated_landmarks"] = que_landmark[landmark_id,:]
-
 
 def get_landmark_distance(adata: ad.AnnData,
                           landmark_position_key: str = "curated_landmarks",
@@ -290,7 +155,6 @@ def reference_to_grid(ref_img: Union[Image.Image,str],
     meta = ww.flatten()[ww.flatten() >= 0].round(0).astype(int)
 
     uni,mem = np.unique(meta,return_counts=True)
-    print(uni)
     srt = np.argsort(mem)[::-1]
     rordr = {old:new for new,old in enumerate(uni[srt])}
     meta = np.array([rordr[x] for x in meta])

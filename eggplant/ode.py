@@ -24,7 +24,7 @@ def make_ode_fun(n_regions: int,
 
 class ODE_solver:
     def __init__(self,
-                 time: np.ndarrau,
+                 time: np.ndarray,
                  y: np.ndarray,
                  y0: np.ndarray,
                  ode_fun: Callable,

@@ -1,15 +1,16 @@
 import torch as t
 import gpytorch as gp
 import anndata as ad
+import squidpy as sq
 import numpy as np
 
-import utils as ut
+from scipy.sparse import spmatrix
 
 from typing import Optional,List,Tuple,Union,Dict
 from squidpy._constants._constants import CoordType
 
-from eggplant import models
-from eggplant import utils
+from . import models as m
+from . import utils as ut
 
 from functools import reduce
 from contextlib import nullcontext
@@ -84,19 +85,19 @@ def fit(model: m.GPModel,
     model.likelihood.eval()
 
 
-def map_to_reference(adatas: Union[ad.AnnData,List[ad.AnnData],Dict[str,ad.AnnData]],
-                     features: Union[str,List[str]],
-                     reference: m.Reference,
-                     device: str = "cpu",
-                     n_epochs: int = 1000,
-                     learning_rate: float = 0.01,
-                     subsample: Optional[Union[float,int]] = None,
-                     verbose: bool = False,
-                     return_models: bool = False,
-                     return_losses: bool = True,
-                     max_cg_iterations: int = 1000,
-                     **kwargs,
-                     )->Dict[str,Union[List["m.GPModel"],List[np.ndarray]]]:
+def transfer_to_reference(adatas: Union[ad.AnnData,List[ad.AnnData],Dict[str,ad.AnnData]],
+                          features: Union[str,List[str]],
+                          reference: m.Reference,
+                          device: str = "cpu",
+                          n_epochs: int = 1000,
+                          learning_rate: float = 0.01,
+                          subsample: Optional[Union[float,int]] = None,
+                          verbose: bool = False,
+                          return_models: bool = False,
+                          return_losses: bool = True,
+                          max_cg_iterations: int = 1000,
+                          **kwargs,
+                          )->Dict[str,Union[List["m.GPModel"],List[np.ndarray]]]:
 
     if not isinstance(adatas,(list,dict)):
         adatas = [adatas]
@@ -177,3 +178,51 @@ def map_to_reference(adatas: Union[ad.AnnData,List[ad.AnnData],Dict[str,ad.AnnDa
         return_object = list(return_object.values())[0]
 
     return return_object
+
+def spatial_smoothing(adata: ad.AnnData,
+                      distance_key: str = "spatial",
+                      n_neigh: int = 4,
+                      coord_type: Union[str,CoordType] = "generic",
+                      sigma: float = 50,
+                      **kwargs,
+                      )->None:
+
+    spatial_key = kwargs.get("spatial_key","spatial")
+    if spatial_key not in adata.obsm.keys():
+        raise Exception("Spatial key not present in AnnData object")
+
+    if distance_key not in adata.obsp.keys():
+        sq.gr.spatial_neighbors(adata,
+                                spatial_key = spatial_key,
+                                coord_type=coord_type,
+                                n_neigh=n_neigh,
+                                key_added=distance_key,
+                                **kwargs,
+                                )
+        distance_key = distance_key + "_distances"
+
+    gr = adata.obsp[distance_key]
+    n_obs,n_features = adata.shape
+    new_X = np.zeros((n_obs,n_features))
+    old_X = adata.X
+
+    if isinstance(old_X,spmatrix):
+        sp_type = type(old_X)
+        old_X = np.array(old_X.todense())
+    else:
+        sp_type = None
+
+    for obs in range(n_obs):
+        ptr = slice(gr.indptr[obs],gr.indptr[obs+1])
+        ind = gr.indices[ptr]
+
+        ws = np.append(gr.data[ptr],0)
+        ws = np.exp(-ws / sigma)
+        ws /= ws.sum()
+        ws = ws.reshape(-1,1)
+        new_X[obs,:] = np.sum(old_X[np.append(ind,obs),:]*ws,axis=0)
+
+    if sp_type is not None:
+        new_X = sp_type(new_X)
+
+    adata.layers["smoothed"] = new_X
