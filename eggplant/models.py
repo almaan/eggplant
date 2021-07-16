@@ -26,7 +26,6 @@ class GPModel(gp.models.ExactGP):
                  covar_fun: Optional[gp.kernels.Kernel] = None,
                  kernel_fun: Optional[gp.kernels.Kernel] = None,
                  device: str = "cpu",
-                 lengthscale_prior: Optional[float] = None,
                  )->None:
 
         self.S = landmark_distances.shape[0]
@@ -51,6 +50,7 @@ class GPModel(gp.models.ExactGP):
 
         if likelihood is None:
             likelihood = gp.likelihoods.GaussianLikelihood()
+
         likelihood = likelihood.to(device = self.device)
 
         super().__init__(landmark_distances,
@@ -63,9 +63,9 @@ class GPModel(gp.models.ExactGP):
 
         if covar_fun is None:
             if kernel_fun is None:
-                kernel = gp.kernels.RQKernel(lengthscale_prior = lengthscale_prior)
+                kernel = gp.kernels.RQKernel()
             else:
-                kernel = kernel_fun(lengthscale_prior = lengthscale_prior)
+                kernel = kernel_fun()
 
             self.covar_module = gp.kernels.ScaleKernel(kernel)
 
@@ -114,9 +114,9 @@ class Reference:
             landmarks = t.tensor(landmarks.astype(np.float32))
             self.lmk_to_pos = {"L{}".format(x):x for x in range(len(landmarks))}
         elif isinstance(landmarks,pd.DataFrame):
-            landmarks = landmarks.values
             self.lmk_to_pos = {l:k for k,l in enumerate(landmarks.index.values)}
-        elif isinstance(landmarks,t.tensor):
+            landmarks = t.tensor(landmarks.values)
+        elif isinstance(landmarks,t.Tensor):
             self.lmk_to_pos = {"L{}".format(x):x for x in range(len(landmarks))}
 
 
@@ -127,7 +127,7 @@ class Reference:
         self.rev_coordinate_transform = lambda x: x * (mx-mn) + mn
 
         self.domain = self.fwd_coordinate_transform(domain)
-        self.landmarks = self.fwd_coordinate_transform(t.tensor(landmarks))
+        self.landmarks = self.fwd_coordinate_transform(landmarks)
         self.ldists = t.cdist(self.domain,
                               self.landmarks,
                               p = 2,
@@ -140,12 +140,29 @@ class Reference:
         self._initialize(meta)
 
     def _initialize(self,
-                    meta: Optional[Union[pd.DataFrame,dict]] = None,
+                    meta: Optional[Union[pd.DataFrame,dict,list,np.ndarray,t.tensor]] = None,
                     )->None:
 
         if meta is not None:
             if isinstance(meta,dict):
                 meta_df = pd.DataFrame(meta)
+            elif isinstance(meta,list):
+                if isinstance(meta[0],list):
+                    meta_df = pd.DataFrame({"meta_{}".format(k):mt for\
+                                            k,mt in enumerate(meta)})
+                else:
+                    meta_df = pd.DataFrame(dict(meta_0 = meta))
+            elif isinstance(meta,(np.ndarray,t.Tensor)):
+                if isinstance(meta,t.Tensor):
+                    meta = meta.detach().numpy()
+                if len(meta.shape) == 2:
+                    meta_df = pd.DataFrame({"meta_{}".format(k):meta[:,k] for\
+                                            k in range(meta.shape[1])})
+                elif len(meta.shape) == 1:
+                    meta_df = pd.DataFrame(dict(meta_0 = meta))
+                else:
+                    raise ValueError
+
             else:
                 meta_df = meta
 
@@ -160,6 +177,7 @@ class Reference:
     def clean(self,)->None:
         meta = self.adata.obs
         del self.adata
+        self.adata = ad.AnnData()
         self._initialize(meta)
 
     def transfer(self,

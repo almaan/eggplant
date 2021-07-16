@@ -1,10 +1,9 @@
 import pandas as pd
 import numpy as np
 import squidpy as sq
-from squidpy._constants._constants import CoordType
 from typing import Union
-from scipy.sparse import spmatrix
 import anndata as ad
+import torch as t
 
 import matplotlib.pyplot as plt
 from typing import Union,Optional,Dict,List,Tuple,Any,TypeVar
@@ -14,6 +13,17 @@ T = TypeVar('T')
 def pd_to_np(x: Union[pd.DataFrame,np.ndarray])->np.ndarray:
     if isinstance(x,pd.DataFrame):
         return x.values
+    else:
+        return x
+
+def np_to_tensor(x: Union[t.Tensor,np.ndarray])->t.Tensor:
+    if isinstance(x,np.ndarray):
+        return t.tensor(x.astype(np.float32))
+    else:
+        return x
+def tensor_to_np(x: Union[t.Tensor,np.ndarray])->np.ndarray:
+    if isinstance(x,t.Tensor):
+        return x.detach().numpy()
     else:
         return x
 
@@ -33,12 +43,15 @@ def get_figure_dims(n_total: int,
 
     return n_rows,n_cols
 
-def _get_feature(adata,feature):
+def _get_feature(adata: ad.AnnData,
+                 feature:str,
+                 layer: Optional[str]=None,
+                 ):
 
     if feature in adata.var.index:
-        get_feature = lambda x: x.obs_vector(feature)
+        get_feature = lambda x: x.obs_vector(feature,layer=layer)
     elif feature in adata.obs.index:
-        get_feature = lambda x: x.var_vector(feature)
+        get_feature = lambda x: x.var_vector(feature,layer = layer)
     elif adata.obsm.keys() is not None:
         get_feature = None
         for key in adata.obsm.keys():

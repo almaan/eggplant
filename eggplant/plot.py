@@ -33,6 +33,7 @@ def _visualize(data:List[Union[np.ndarray,List[str]]],
                hspace: Optional[float] = None,
                wspace: Optional[float] = None,
                quantile_scaling: bool = False,
+               exclude_feature_from_title: bool = False,
                flip_y: bool = False,
                **kwargs,
                )->Optional[Union[Tuple[Tuple[plt.Figure,plt.Axes],Tuple[plt.Figure,plt.Axes]],
@@ -128,7 +129,6 @@ def _visualize(data:List[Union[np.ndarray,List[str]]],
         else:
             vmin = [None] * len(counts)
             vmax = [None] * len(counts)
-    print(vmax,vmin)
 
     for k in range(len(counts)):
         _sc = ax[k].scatter(crds[k][:,0],
@@ -155,7 +155,13 @@ def _visualize(data:List[Union[np.ndarray,List[str]]],
                               )
 
         if include_title:
-            ax[k].set_title(names[k],
+            if exclude_feature_from_title:
+                _title = names[k].split("_")
+                _title = "_".join(_title[0:-1])
+            else:
+                _title = names[k]
+
+            ax[k].set_title(_title,
                             fontsize = fontsize,
                             )
 
@@ -289,6 +295,7 @@ def visualize_transfer(reference: m.Reference,
 @set_vizdoc
 def visualize_observed(adatas: Union[Dict[str,ad.AnnData],List[ad.AnnData]],
                        feature: str,
+                       layer: Optional[str] = None,
                        **kwargs,
                        )->None:
     """
@@ -309,7 +316,9 @@ def visualize_observed(adatas: Union[Dict[str,ad.AnnData],List[ad.AnnData]],
         _adatas = adatas.values()
         names = list(adatas.keys())
         get_feature = ut._get_feature(list(_adatas)[0],
-                                      feature)
+                                      feature,
+                                      layer = layer,
+                                      )
 
     else:
         _adatas = adatas
