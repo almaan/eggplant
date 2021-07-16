@@ -32,19 +32,7 @@ class FitTest(unittest.TestCase):
    
 class TransferTest(unittest.TestCase):
     def test_transfer_default(self,):
-        model_input = ut.create_model_input()
-        n_obs = model_input["domain"].shape[0]
-        var = pd.DataFrame(["gene1","gene2"],
-                           index = ["gene1","gene2"],
-                           columns= ["gene"],
-                           )
-        adata = ad.AnnData(np.random.random((n_obs,2)),
-                           var =var,
-                           )
-        adata.obsm["spatial"] = model_input["domain"]
-        adata.obsm["landmark_distances"] = model_input["landmark_distances"]
-
-
+        adata = ut.create_adata()
         reference_input = ut.create_model_input()
         ref = eg.m.Reference(domain = reference_input["domain"],
                              landmarks = reference_input["landmarks"],
@@ -57,20 +45,7 @@ class TransferTest(unittest.TestCase):
                                      )
 
     def test_transfer_custom(self,):
-        model_input = ut.create_model_input()
-        n_obs = model_input["domain"].shape[0]
-        var = pd.DataFrame(["gene1","gene2"],
-                           index = ["gene1","gene2"],
-                           columns= ["gene"],
-                           )
-        adata = ad.AnnData(np.random.random((n_obs,2)),
-                           var =var,
-                           )
-        adata.obsm["spatial"] = model_input["domain"]
-        adata.obsm["landmark_distances"] = model_input["landmark_distances"].numpy()
-        adata.layers["layer"] = adata.X.copy()
-
-
+        adata = ut.create_adata()
         reference_input = ut.create_model_input()
         ref = eg.m.Reference(domain = reference_input["domain"],
                              landmarks = reference_input["landmarks"],
@@ -87,6 +62,26 @@ class TransferTest(unittest.TestCase):
                                      return_losses = True,
                                      max_cg_iterations = 1000,
                                      )
+    def test_transfer_partial(self,):
+        adata = ut.create_adata()
+        reference_input = ut.create_model_input()
+        ref_lmk = reference_input["landmarks"]
+        ref_lmk = pd.DataFrame(ref_lmk.numpy(),
+                               index = [f"L{k}" for k in range(ref_lmk.shape[0])],
+                               columns = ["xcoord","ycoord"],
+                               )
+        ref = eg.m.Reference(domain = reference_input["domain"],
+                             landmarks = ref_lmk,
+                             meta = t.tensor(reference_input["meta"]),
+                             )
+
+
+        eg.fun.transfer_to_reference([adata],
+                                     "gene1",
+                                     reference = ref,
+                                     )
+
+
 
 if __name__ == '__main__':
     unittest.main()
