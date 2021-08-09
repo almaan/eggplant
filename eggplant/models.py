@@ -136,6 +136,7 @@ class Reference:
 
         self.S = self.ldists.shape[0]
         self.L = self.landmarks.shape[0]
+        self._obs_meta_df = None
 
         self._initialize(meta)
 
@@ -145,29 +146,30 @@ class Reference:
 
         if meta is not None:
             if isinstance(meta,dict):
-                meta_df = pd.DataFrame(meta)
+                self._obs_meta_df = pd.DataFrame(meta)
             elif isinstance(meta,list):
                 if isinstance(meta[0],list):
-                    meta_df = pd.DataFrame({"meta_{}".format(k):mt for\
+                    self._obs_meta_df = pd.DataFrame({"meta_{}".format(k):mt for\
                                             k,mt in enumerate(meta)})
                 else:
-                    meta_df = pd.DataFrame(dict(meta_0 = meta))
+                    self._obs_meta_df = pd.DataFrame(dict(meta_0 = meta))
             elif isinstance(meta,(np.ndarray,t.Tensor)):
                 if isinstance(meta,t.Tensor):
                     meta = meta.detach().numpy()
                 if len(meta.shape) == 2:
-                    meta_df = pd.DataFrame({"meta_{}".format(k):meta[:,k] for\
+                    self._obs_meta_df = pd.DataFrame({"meta_{}".format(k):meta[:,k] for\
                                             k in range(meta.shape[1])})
                 elif len(meta.shape) == 1:
-                    meta_df = pd.DataFrame(dict(meta_0 = meta))
+                    self._obs_meta_df = pd.DataFrame(dict(meta_0 = meta))
                 else:
                     raise ValueError
 
             else:
-                meta_df = meta
+                self._obs_meta_df = meta
 
+        if self._obs_meta_df is not None:
             self.adata = ad.AnnData(np.empty((self.S,1)),
-                                    obs = meta_df)
+                                    obs = self._obs_meta_df)
         else:
             self.adata = ad.AnnData()
 
@@ -176,10 +178,9 @@ class Reference:
 
     def clean(self,)->None:
         if self.n_models > 0:
-            meta = self.adata.obs
             del self.adata
             self.adata = ad.AnnData()
-            self._initialize(meta)
+            self._initialize()
 
     def transfer(self,
                  models: Union[GPModel,List[GPModel]],
@@ -222,6 +223,8 @@ class Reference:
                                                 pd.DataFrame([],
                                                              index=tmp_anndata.columns,
                                                 ))
+
+            tmp_anndata.obs = self._obs_meta_df
             self.adata = ad.concat((self.adata,
                                     tmp_anndata),
                                     axis = 1,
@@ -234,7 +237,7 @@ class Reference:
             if meta is not None:
                 self.adata.var = meta
 
-
+        self.adata.obs = self._obs_meta_df.copy()
         self.n_models = self.n_models + add_models
         self.adata.obsm["spatial"] = self.domain
 
@@ -279,7 +282,7 @@ class Reference:
                                by: str="feature"):
         if self.adata.var.shape[1] <= 0:
             raise ValueError("No meta data provided")
-        elif by not in self.adata.columns:
+        elif by not in self.adata.var.columns:
             raise ValueError(f"{by} is not included in the meta data.")
 
         uni_feature_vals = np.unique(self.adata.var[by].values)
@@ -294,6 +297,7 @@ class Reference:
                                    var = tmp_var,
                                    obs = tmp_obs,
                                    )
+
             self.adata = ad.concat((self.adata,tmp_adata),
                                    axis = 1,
                                    merge = "first",

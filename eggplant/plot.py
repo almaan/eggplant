@@ -336,3 +336,85 @@ def visualize_observed(adatas: Union[Dict[str,ad.AnnData],List[ad.AnnData]],
     return _visualize(data,**kwargs)
 
 
+def swarmplot_transfer(ref: "m.Reference",
+                       inside: Dict[str,str],
+                       outside: Optional[Dict[str:str]] = None,
+                       side_size: float = 4,
+                       swarm_marker_style: Optional[Dict[str,Any]] = None,
+                       mean_marker_style: Optional[Dict[str,Any]],
+                       display_gird: bool = True,
+                       title_fontsize: float = 25,
+                       label_fontsize: float = 20,
+                       ticks_fontsize: float = 15,
+                       )->Optional[plt.Figure,plt.Axes]:
+
+    adata = ref.adata
+
+
+    _swarm_marker_style =  dict(s = 90,
+                                marker ="d",
+                                c = "#D2D811",
+                                edgecolor ="#696C05",
+                                zorder = np.inf,
+                                )
+
+    for k,v in swarm_marker_style.items():
+        _swarm_marker_style[k] = v
+
+    _mean_marker_style = dict(s = 0.1,
+                              c = "black",
+                              alpha = 0.6,
+                              )
+    for k,v in mean_marker_style.items():
+        _mean_marker_style[k] = v
+
+
+    in_vals = eval("adata.{attribute}['{column}']".format(**inside))
+    uni_in = np.unique(in_vals)
+
+    if outside is not None:
+        uni_out = np.unique(out_vals)
+        out_vals = eval("adata.{attribute}['{column}']".format(**outside))
+    else:
+        uni_out = [None]
+        axis_out = (1 if inside["attribute"] == "obs" else 0)
+        sel_id_out = np.array([True] * adata.shape[axis_out])
+
+
+    for ii,out in enumerate(uni_out):
+        if outside is not None:
+            sel_id_out = out_vals == out
+        for jj,ins in enumerate(uni_in):
+            sel_id_in = in_vals == ins
+            if inside["attribute"] == "obs":
+                ys = adata.X[sel_id_in,:][:,sel_id_out].mean(axis=1)
+            else:
+                ys = adata.X[sel_id_out,:][:,sel_id_in].mean(axis=0)
+
+            xs = np.random.normal(jj,0.1,size = len(ys))
+
+            ax[ii].scatter(xs,
+                           ys,
+                           **_swarm_marker_style,
+                          )
+
+            ax[ii].scatter(jj,
+                           ys.mean(),
+                           **_mean_marker_style,
+                           )
+
+        ax[ii].set_xticks(np.arange(len(uni_in)))
+        ax[ii].set_xticklabels(uni_in,rotation = 90)
+        ax[ii].set_title(out,fontsize = title_fontsize)
+        ax[ii].tick_params(axis="both",
+                           which = "major",
+                           labelsize=ticks_fontsize)
+
+        if display_grid:
+            ax[ii].grid(True,
+                        which = "major",
+                        axis="x",
+                        zorder = 0,
+                        color = "black",
+                        linestyle = "dashed",
+                    )
