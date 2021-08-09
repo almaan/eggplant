@@ -79,13 +79,15 @@ def match_data_frames(df_a: pd.DataFrame,
 
 
     union_cols = df_a.columns.union(df_b.columns)
+    union_rows = df_a.index.union(df_b.index)
+    n_obs = len(union_rows)
     n_vars = len(union_cols)
     n_a = df_a.shape[0]
     n_b = df_b.shape[0]
 
-    new_df = pd.DataFrame(np.ones((n_a + n_b,n_vars))*np.nan,
+    new_df = pd.DataFrame(np.ones((n_obs))*np.nan,
                           columns = union_cols,
-                          index = df_a.index.append(df_b.index),
+                          index = union_rows,
                           )
 
     new_df.loc[df_a.index,df_a.columns] = df_a.values
