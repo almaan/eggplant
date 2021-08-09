@@ -175,10 +175,11 @@ class Reference:
 
 
     def clean(self,)->None:
-        meta = self.adata.obs
-        del self.adata
-        self.adata = ad.AnnData()
-        self._initialize(meta)
+        if self.n_models > 0:
+            meta = self.adata.obs
+            del self.adata
+            self.adata = ad.AnnData()
+            self._initialize(meta)
 
     def transfer(self,
                  models: Union[GPModel,List[GPModel]],
@@ -231,7 +232,7 @@ class Reference:
             self.adata = tmp_anndata
             self.adata.var.index = tmp_anndata.columns
             if meta is not None:
-                self.adata.obs = meta
+                self.adata.var = meta
 
 
         self.n_models = self.n_models + add_models
@@ -274,4 +275,26 @@ class Reference:
             self.adata.obs = self.adata.obs.drop(["average"],
                                                  axis=1)
 
+    def average_representation(self,
+                               by: str="feature"):
+        if self.adata.var.shape[1] <= 0:
+            raise ValueError("No meta data provided")
+        elif by not in self.adata.columns:
+            raise ValueError(f"{by} is not included in the meta data.")
 
+        uni_feature_vals = np.unique(self.adata.var[by].values)
+        for fv in uni_feature_vals:
+            name = "mean_{}".format(fv)
+            sel_idx = self.adata.var[feature].values == fv
+            mean_vals = self.adata.values[:,sel_idx].mean(axis=1)[:,np.newaxis]
+            tmp_var = self.adata.var.iloc[sel_idx,:]
+            tmp_var[feature] = name
+            tmp_obs = self.adata.obs
+            tmp_adata = ad.AnnData(mean_vals,
+                                   var = tmp_var,
+                                   obs = tmp_obs,
+                                   )
+            self.adata = ad.concat((self.adata,tmp_adata),
+                                   axis = 1,
+                                   merge = "first",
+                                   )

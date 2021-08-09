@@ -21,6 +21,7 @@ from typing import List,Dict,Union,Optional
 import numbers
 
 from . import models as m
+from . import utils as ut
 from pathlib import Path
 
 def get_landmark_distance(adata: ad.AnnData,
@@ -44,14 +45,25 @@ def get_landmark_distance(adata: ad.AnnData,
     lmk_crd = adata.uns["curated_landmarks"].copy()
 
     if isinstance(lmk_crd,pd.DataFrame):
+        lmk_crd_names = list(lmk_crd.index)
         lmk_crd = lmk_crd.values
+    else:
+        lmk_crd_names = None
 
     if reference is not None:
         import morphops as mops
         if isinstance(reference,m.Reference):
             ref_lmk_crd = reference.landmarks.numpy()
+            ref_lmk_crd_names = list(reference.lmk_to_pos.keys())
         if isinstance(reference,np.ndarray):
             ref_lmk_crd = reference
+            ref_lmk_crd_names = None
+
+        ref_lmk_crd,lmk_crd = ut.match_arrays_by_names(ref_lmk_crd,
+                                                       lmk_crd,
+                                                       ref_lmk_crd_names,
+                                                       lmk_crd_names,
+                                                       )
 
         obs_crd = mops.tps_warp(lmk_crd,ref_lmk_crd,obs_crd)
         lmk_crd = mops.tps_warp(lmk_crd,ref_lmk_crd,lmk_crd)
@@ -98,7 +110,7 @@ def reference_to_grid(ref_img: Union[Image.Image,str],
         else:
             raise ValueError(f"Color format {background_color} not supported.")
 
-        km = KMeans(n_clusters = n_regions + 1)
+        km = KMeans(n_clusters = n_regions + 1,random_state=1)
         nw,nh,nc = img.shape
         idx = km.fit_predict(img.reshape(nw*nh,nc))
         centers = km.cluster_centers_[:,0:3]
@@ -173,18 +185,30 @@ def match_scales(adata: ad.AnnData,
 
     obs_lmk = adata.uns["curated_landmarks"].copy()
     if isinstance(obs_lmk,pd.DataFrame):
+        obs_lmk_names = list(obs_lmk.index)
         obs_lmk = obs_lmk.values
+    else:
+        obs_lmk_names = None
 
     if isinstance(reference,m.Reference):
         ref_lmk = reference.landmarks.detach().numpy()
+        ref_lmk_names = list(reference.lmk_to_pos.keys())
     elif isinstance(reference,pd.DataFrame):
         ref_lmk = reference.values
+        ref_lmk_names = list(reference.index)
     elif isinstance(reference,np.ndarray):
         ref_lmk = reference
+        ref_lmk_names = None
     else:
         NotImplementedError("reference of type : {} is not supported".\
                             format(type(reference))
                             )
+
+    ref_lmk,obs_lmk = ut.match_arrays_by_names(ref_lmk,
+                                               obs_lmk,
+                                               ref_lmk_names,
+                                               obs_lmk_names,
+                                               )
 
     n_lmk =  len(ref_lmk)
     n_use_lmk = min(n_lmk,n_lmk_thrs)

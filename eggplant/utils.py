@@ -94,3 +94,19 @@ def match_data_frames(df_a: pd.DataFrame,
     return new_df
 
 
+def match_arrays_by_names(a_obj: np.ndarray,
+                          b_obj: np.ndarray,
+                          a_obj_names: List[str],
+                          b_obj_names: List[str],
+                          )->Tuple[np.ndarray,np.ndarray]:
+
+    if a_obj_names is not None and b_obj_names is not None:
+        inter = list(set(a_obj_names).intersection(b_obj_names))
+        keep_a_obj = [k for k,x in enumerate(a_obj_names) if x in inter]
+        keep_b_obj = [k for k,x in enumerate(b_obj_names) if x in inter]
+        keep_a_obj.sort()
+        keep_b_obj.sort()
+        a_obj = a_obj[keep_a_obj,:]
+        b_obj = b_obj[keep_b_obj,:]
+
+    return a_obj,b_obj

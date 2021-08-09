@@ -3,6 +3,7 @@ import gpytorch as gp
 import anndata as ad
 import squidpy as sq
 import numpy as np
+import pandas as pd
 
 from scipy.sparse import spmatrix
 
@@ -158,8 +159,16 @@ def transfer_to_reference(adatas: Union[ad.AnnData,List[ad.AnnData],Dict[str,ad.
                     **kwargs,
                     )
 
+            # experimental
+            meta_info = pd.DataFrame(dict(model=model_name,
+                                          feature=feature,
+                                          ),
+                                     index = [full_name],
+                                     )
+
             reference.transfer(model,
                                names = full_name,
+                               meta = meta_info,
                                )
             if return_losses:
                 losses[full_name] = model.loss_history
