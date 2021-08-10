@@ -239,7 +239,7 @@ class Reference:
 
         self.adata.obs = self._obs_meta_df.copy()
         self.n_models = self.n_models + add_models
-        self.adata.obsm["spatial"] = self.domain
+        self.adata.obsm["spatial"] = self.domain.detach().numpy()
 
     def get_sample(self,
                    idx: Union[str,int],
@@ -259,7 +259,7 @@ class Reference:
              **kwargs,
              )->None:
 
-        self.adata.obsm["spatial"] = self.domain
+        self.adata.obsm["spatial"] = self.domain.detach().numpy()
 
         if samples is None:
             samples = self.adata.var.index
@@ -288,7 +288,7 @@ class Reference:
         uni_feature_vals = np.unique(self.adata.var[by].values)
         for fv in uni_feature_vals:
             name = "mean_{}".format(fv)
-            sel_idx = self.adata.var[feature].values == fv
+            sel_idx = self.adata.var[by].values == fv
             mean_vals = self.adata.values[:,sel_idx].mean(axis=1)[:,np.newaxis]
             tmp_var = self.adata.var.iloc[sel_idx,:]
             tmp_var[feature] = name
