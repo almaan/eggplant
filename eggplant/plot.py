@@ -336,49 +336,61 @@ def visualize_observed(adatas: Union[Dict[str,ad.AnnData],List[ad.AnnData]],
     return _visualize(data,**kwargs)
 
 
+from typing import Dict,Optional,Any
 def swarmplot_transfer(ref: "m.Reference",
                        inside: Dict[str,str],
-                       outside: Optional[Dict[str:str]] = None,
-                       side_size: float = 4,
+                       outside: Optional[Dict[str,str]] = None,
+                       n_cols: Optional[int] = None,
+                       n_rows: Optional[int] = None,
+                       side_size: float = 4.0,
                        swarm_marker_style: Optional[Dict[str,Any]] = None,
-                       mean_marker_style: Optional[Dict[str,Any]],
-                       display_gird: bool = True,
+                       mean_marker_style: Optional[Dict[str,Any]] = None,
+                       display_grid: bool = True,
                        title_fontsize: float = 25,
                        label_fontsize: float = 20,
                        ticks_fontsize: float = 15,
-                       )->Optional[plt.Figure,plt.Axes]:
+                       return_figure: bool = True,
+                       )->Optional[Tuple[plt.Figure,plt.Axes]]:
 
     adata = ref.adata
 
+    _swarm_marker_style =  dict(s = 0.1,
+                              c = "black",
+                              alpha = 0.6,
+                              )
 
-    _swarm_marker_style =  dict(s = 90,
+    if swarm_marker_style is not None:
+        for k,v in swarm_marker_style.items():
+            _swarm_marker_style[k] = v
+
+    _mean_marker_style = dict(s = 90,
                                 marker ="d",
                                 c = "#D2D811",
                                 edgecolor ="#696C05",
                                 zorder = np.inf,
                                 )
-
-    for k,v in swarm_marker_style.items():
-        _swarm_marker_style[k] = v
-
-    _mean_marker_style = dict(s = 0.1,
-                              c = "black",
-                              alpha = 0.6,
-                              )
-    for k,v in mean_marker_style.items():
-        _mean_marker_style[k] = v
+    
+    
+    if mean_marker_style is not None:
+        for k,v in mean_marker_style.items():
+            _mean_marker_style[k] = v
 
 
-    in_vals = eval("adata.{attribute}['{column}']".format(**inside))
+    in_vals = eval("adata.{attribute}['{column}'].values".format(**inside))
     uni_in = np.unique(in_vals)
 
     if outside is not None:
+        out_vals = eval("adata.{attribute}['{column}'].values".format(**outside))
         uni_out = np.unique(out_vals)
-        out_vals = eval("adata.{attribute}['{column}']".format(**outside))
     else:
         uni_out = [None]
         axis_out = (1 if inside["attribute"] == "obs" else 0)
         sel_id_out = np.array([True] * adata.shape[axis_out])
+
+    n_rows,n_cols = ut.get_figure_dims(len(uni_out),n_rows,n_cols)
+    figsize = (n_cols * side_size,n_rows * side_size)
+    fig,ax = plt.subplots(n_rows,n_cols,figsize = figsize)
+    ax = ax.flatten()
 
 
     for ii,out in enumerate(uni_out):
@@ -403,6 +415,11 @@ def swarmplot_transfer(ref: "m.Reference",
                            **_mean_marker_style,
                            )
 
+        if outside is not None:
+            ax[ii].set_xlabel(inside["column"],fontsize = 0.8 * title_fontsize)
+        ax[ii].set_ylabel(outside["column"],fontsize = 0.8 * title_fontsize)
+
+
         ax[ii].set_xticks(np.arange(len(uni_in)))
         ax[ii].set_xticklabels(uni_in,rotation = 90)
         ax[ii].set_title(out,fontsize = title_fontsize)
@@ -418,3 +435,13 @@ def swarmplot_transfer(ref: "m.Reference",
                         color = "black",
                         linestyle = "dashed",
                     )
+    for axx in ax[ii+1:]:
+        axx.axis("off")
+
+    fig.tight_layout()
+
+    if return_figure:
+        return (fig,ax)
+    else:
+        plt.show()
+        return None
