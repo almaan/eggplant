@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 from typing import Union,Optional,Dict,List,Tuple,Any,TypeVar
 
 
+T = TypeVar('T') 
 
 def _visualize(data:List[Union[np.ndarray,List[str]]],
                n_cols: Optional[int] = None,
@@ -35,6 +36,7 @@ def _visualize(data:List[Union[np.ndarray,List[str]]],
                quantile_scaling: bool = False,
                exclude_feature_from_title: bool = False,
                flip_y: bool = False,
+               colorbar_fontsize: float = 50,
                **kwargs,
                )->Optional[Union[Tuple[Tuple[plt.Figure,plt.Axes],Tuple[plt.Figure,plt.Axes]],
                                  Tuple[plt.Figure,plt.Axes]]]:
@@ -79,7 +81,8 @@ def _visualize(data:List[Union[np.ndarray,List[str]]],
        of outliers.
     flip_y: bool
         set to true if y-axis should be flipped
-
+    colorbar_fontsize: float
+        fontsize of colorbar ticks
     Returns:
     --------
 
@@ -141,8 +144,9 @@ def _visualize(data:List[Union[np.ndarray,List[str]]],
 
 
         if include_colorbar and not separate_colorbar:
-            fig.colorbar(_sc,ax = ax[k],
-                         orientation = colorbar_orientation)
+            cbar = fig.colorbar(_sc,ax = ax[k],
+                                orientation = colorbar_orientation)
+            cbar.ax.tick_params(labelsize=colorbar_fontsize)
 
         if show_landmarks:
             for l in range(lmks[k].shape[0]):
@@ -183,7 +187,7 @@ def _visualize(data:List[Union[np.ndarray,List[str]]],
         fig2,ax2 = plt.subplots(1,1,figsize=(6,12))
         ax2.axis("off")
         cbar = fig2.colorbar(_sc)
-        cbar.ax.tick_params(labelsize=50)
+        cbar.ax.tick_params(labelsize=colorbar_fontsize)
 
     if return_figures:
         if separate_colorbar:
@@ -416,8 +420,18 @@ def swarmplot_transfer(ref: "m.Reference",
                            )
 
         if outside is not None:
-            ax[ii].set_xlabel(inside["column"],fontsize = 0.8 * title_fontsize)
-        ax[ii].set_ylabel(outside["column"],fontsize = 0.8 * title_fontsize)
+            xlabel = inside["column"]
+            if not isinstance(xlabel,str):
+                xlabel = str(xlabel)
+            ax[ii].set_xlabel(xlabel.capitalize(),
+                              fontsize = 0.8 * title_fontsize)
+
+        ylabel = outside["column"]
+        if not isinstance(ylabel,str):
+            ylabel = str(ylabel)
+
+        ax[ii].set_ylabel(ylabel.capitalize(),
+                          fontsize = 0.8 * title_fontsize)
 
 
         ax[ii].set_xticks(np.arange(len(uni_in)))
@@ -445,3 +459,34 @@ def swarmplot_transfer(ref: "m.Reference",
     else:
         plt.show()
         return None
+
+class ColorMapper:
+    def __init__(self,
+                 cmap: Dict[T,str],
+                 )->None:
+
+        self.n_c = len(cmap)
+        self.cdict = cmap
+        if not all([isinstance(x,int) for x in self.cdict.keys()]):
+            self.numeric_cdict = {k:c for k,c in enumerate(cdict.keys())}
+        else:
+            self.numeric_cdict = self.cdict
+
+    def __call__(self,
+                 x:Union[T,np.ndarray],
+                 n_elements: bool = False,
+                 )->Union[str,np.ndarray]:
+
+        if hasattr(x,"__len__") or n_elements:
+            if n_elements:
+                n = x
+            else:
+                n = len(x)
+            clr = [self.numeric_cdict[ii % self.n_c] for ii in range(n)]
+            clr = np.array(clr)
+        else:
+            if x in self.cdict.keys():
+                clr = self.cdict[x]
+            else:
+                raise ValueError(f"{x} is not supported as value.")
+        return clr

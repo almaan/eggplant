@@ -102,6 +102,8 @@ def match_arrays_by_names(a_obj: np.ndarray,
 
     if a_obj_names is not None and b_obj_names is not None:
         inter = list(set(a_obj_names).intersection(b_obj_names))
+        assert len(inter) > 0,\
+            "No shared landmarks between reference and observed data."
         keep_a_obj = [k for k,x in enumerate(a_obj_names) if x in inter]
         keep_b_obj = [k for k,x in enumerate(b_obj_names) if x in inter]
         keep_a_obj.sort()

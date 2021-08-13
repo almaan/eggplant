@@ -39,8 +39,11 @@ def fit(model: m.GPModel,
         fast_computation: bool = True,
         learning_rate: float = 0.01,
         verbose: bool = False,
+        seed: float = 0,
         **kwargs,
         )->None:
+
+    t.manual_seed(seed)
 
     model.train()
     model.likelihood.train()
@@ -115,6 +118,11 @@ def transfer_to_reference(adatas: Union[ad.AnnData,List[ad.AnnData],Dict[str,ad.
 
     if not isinstance(features,list):
         features = [features]
+
+    n_features = len(features)   
+    n_adatas = len(adatas)
+    n_total = n_features*n_adatas
+
     for k,_adata in enumerate(adatas):
         if subsample is not None:
             if subsample < 1:
@@ -136,13 +144,16 @@ def transfer_to_reference(adatas: Union[ad.AnnData,List[ad.AnnData],Dict[str,ad.
 
         landmark_distances = adata.obsm["landmark_distances"]
 
-        for feature in features:
+        for f,feature in enumerate(features):
             full_name = model_name + "_" + feature
             get_feature = ut._get_feature(adatas[0],feature,layer=layer)
             feature_values = get_feature(adata)
 
-            if verbose: print("Processing >> Model : {} | Feature : {}".\
-                              format(model_name,feature),
+            if verbose: print("[Processing] ::  Model : {} | Feature : {} | Transfer : {}/{}".\
+                              format(model_name,
+                                     feature,
+                                     k*n_features + f +1,
+                                     n_total),
                               flush = True)
 
             model = m.GPModel(ut.np_to_tensor(landmark_distances),

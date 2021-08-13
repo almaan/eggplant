@@ -187,8 +187,12 @@ def match_scales(adata: ad.AnnData,
     if isinstance(obs_lmk,pd.DataFrame):
         obs_lmk_names = list(obs_lmk.index)
         obs_lmk = obs_lmk.values
-    else:
+    elif isinstance(obs_lmk,np.ndarray):
         obs_lmk_names = None
+    else:
+        NotImplementedError("landmarks of type : {} is not supported".\
+                            format(type(obs_lmk))
+                            )
 
     if isinstance(reference,m.Reference):
         ref_lmk = reference.landmarks.detach().numpy()
@@ -203,7 +207,6 @@ def match_scales(adata: ad.AnnData,
         NotImplementedError("reference of type : {} is not supported".\
                             format(type(reference))
                             )
-
     ref_lmk,obs_lmk = ut.match_arrays_by_names(ref_lmk,
                                                obs_lmk,
                                                ref_lmk_names,
@@ -273,7 +276,6 @@ def join_adatas(adatas:List[ad.AnnData],
                               tmp_obs))
 
         for key in joint_obsm.keys():
-            print(adatas[k].obsm[key].shape)
             joint_obsm[key].append(adatas[k].obsm[key])
 
     for key in joint_obsm.keys():

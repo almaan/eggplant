@@ -110,15 +110,15 @@ class Reference:
 
         if isinstance(domain,np.ndarray):
             domain = t.tensor(domain.astype(np.float32))
+
         if isinstance(landmarks,np.ndarray):
             landmarks = t.tensor(landmarks.astype(np.float32))
             self.lmk_to_pos = {"L{}".format(x):x for x in range(len(landmarks))}
         elif isinstance(landmarks,pd.DataFrame):
             self.lmk_to_pos = {l:k for k,l in enumerate(landmarks.index.values)}
-            landmarks = t.tensor(landmarks.values)
+            landmarks = t.tensor(landmarks.values.astype(np.float32))
         elif isinstance(landmarks,t.Tensor):
             self.lmk_to_pos = {"L{}".format(x):x for x in range(len(landmarks))}
-
 
         mn = t.min(domain)
         mx = t.max(domain)
@@ -223,13 +223,15 @@ class Reference:
                                                 pd.DataFrame([],
                                                              index=tmp_anndata.columns,
                                                 ))
+            if self._obs_meta_df is not None:
+                tmp_anndata.obs = self._obs_meta_df
 
-            tmp_anndata.obs = self._obs_meta_df
             self.adata = ad.concat((self.adata,
                                     tmp_anndata),
                                     axis = 1,
                                     merge = "first",
                                    )
+
             self.adata.var = new_meta
         else:
             self.adata = tmp_anndata
@@ -237,7 +239,8 @@ class Reference:
             if meta is not None:
                 self.adata.var = meta
 
-        self.adata.obs = self._obs_meta_df.copy()
+        # if self._obs_meta_df is not None:
+            # self.adata.obs = self._obs_meta_df
         self.n_models = self.n_models + add_models
         self.adata.obsm["spatial"] = self.domain.detach().numpy()
 
