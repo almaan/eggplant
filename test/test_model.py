@@ -5,7 +5,7 @@ from scipy.spatial.distance import cdist
 import torch as t
 import unittest
 import gpytorch as gp
-import utils as ut
+from . import utils as ut
 
 
 class TestModel(unittest.TestCase):
