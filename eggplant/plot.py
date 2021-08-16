@@ -298,7 +298,7 @@ def visualize_transfer(reference: m.Reference,
 
 @set_vizdoc
 def visualize_observed(adatas: Union[Dict[str,ad.AnnData],List[ad.AnnData]],
-                       feature: str,
+                       features: Union[str,List[str]],
                        layer: Optional[str] = None,
                        **kwargs,
                        )->None:
@@ -311,29 +311,31 @@ def visualize_observed(adatas: Union[Dict[str,ad.AnnData],List[ad.AnnData]],
     adatas: Union[Dict[str,ad.AnnData],List[ad.AnnData]]
         List or dictionary of AnnData objects holding the,
         data to be transferred.
-    feature: str
+    features: Union[str,List[str]]
         Name of feature to be visualized
     """
 
 
+    features = ut.obj_to_list(features)
+    n_features = len(features)
+
     if isinstance(adatas,dict):
         _adatas = adatas.values()
-        names = list(adatas.keys())
-        get_feature = ut._get_feature(list(_adatas)[0],
+        names = [ a + "_" + f for a in list(adatas.keys()) for f in features]
+        get_feature = [ut._get_feature(list(_adatas)[0],
                                       feature,
                                       layer = layer,
-                                      )
+                                      ) for feature in features]
 
     else:
         _adatas = adatas
-        names = ["Observation_{}".format(k) for k in range(len(adatas))]
+        names = ["Sample_{}_{}".format(k,f) for k in range(len(adatas)) for f in features]
 
-        get_feature = ut._get_feature(_adatas[0],
-                                      feature)
-
-    counts = [get_feature(a) for a in _adatas]
-    lmks = [ut.pd_to_np(a.uns["curated_landmarks"]) for a in _adatas]
-    crds = [a.obsm["spatial"] for a in _adatas]
+        get_feature = [ut._get_feature(_adatas[0],
+                                      feature) for feature in features]
+    counts = [get_feature[k](a) for a in _adatas for k in range(n_features)]
+    lmks = [ut.pd_to_np(a.uns["curated_landmarks"]) for a in _adatas for k in range(n_features)]
+    crds = [a.obsm["spatial"] for a in _adatas for k in range(n_features)]
 
     data = [counts,lmks,crds,names]
 
