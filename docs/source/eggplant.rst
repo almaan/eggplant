@@ -10,7 +10,7 @@ eggplant.constants module
 .. automodule:: eggplant.constants
     :members:
     :undoc-members:
-    :special-members: __init__
+    :show-inheritance:
 
 eggplant.methods module
 -----------------------
@@ -19,7 +19,6 @@ eggplant.methods module
     :members:
     :undoc-members:
     :show-inheritance:
-    :special-members: __init__
 
 eggplant.models module
 ----------------------
@@ -30,14 +29,6 @@ eggplant.models module
     :show-inheritance:
     :special-members: __init__
 
-eggplant.ode module
--------------------
-
-.. automodule:: eggplant.ode
-    :members:
-    :undoc-members:
-    :show-inheritance:
-    :special-members: __init__
 
 eggplant.plot module
 --------------------
@@ -46,7 +37,6 @@ eggplant.plot module
     :members:
     :undoc-members:
     :show-inheritance:
-    :special-members: __init__
 
 eggplant.preprocess module
 --------------------------
@@ -55,16 +45,6 @@ eggplant.preprocess module
     :members:
     :undoc-members:
     :show-inheritance:
-    :special-members: __init__
-
-eggplant.utils module
----------------------
-
-.. automodule:: eggplant.utils
-    :members:
-    :undoc-members:
-    :show-inheritance:
-    :special-members:
 
 
 Module contents
@@ -74,4 +54,3 @@ Module contents
     :members:
     :undoc-members:
     :show-inheritance:
-    :special-members:

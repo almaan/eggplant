@@ -28,6 +28,21 @@ def get_landmark_distance(
     reference: Optional[Union[m.Reference, np.ndarray]] = None,
     **kwargs,
 ) -> None:
+    """compute landmark distances
+
+    :param adata: AnnData object where distance between landmarks and
+     observations should be measured
+    :type adata: ad.AnnData
+    :param landmark_position_key: key of landmark coordinates,
+     defaults to "curated_landmarks
+    :type landmark_position_key: str
+    :param landmark_position_key: key to use for landmark distances in .obsm,
+     defaults to "landmark_distances"
+    :type landmark_distance_key: str = "landmark_distances",
+    :param reference: provide reference if non-homogeneous distortions
+     should be corrected for using TPS (thin plate splines)
+    :type reference: Optional[Union[m.Reference, np.ndarray]]
+    """
 
     assert "spatial" in adata.obsm, "no coordinates for the data"
 
@@ -79,8 +94,34 @@ def reference_to_grid(
     ref_img: Union[Image.Image, str],
     n_approx_points: int = 1e3,
     background_color: Union[str, Union[np.ndarray, tuple]] = "white",
-    n_regions: int = 2,
+    n_regions: int = 1,
 ) -> Tuple[np.ndarray, np.ndarray]:
+    """convert image to grid of observations
+
+    when creating a reference we will discretize the domain
+    into fixed locations where feature values will be predicted
+
+    :param ref_img: PIL.Image or path of/to reference image
+    :type ref_img: Union[Image.Image, str]
+    :param n_approx_points: approximate number of points to
+     include in the discretized grid. The number of grid points will be
+     in the magnitude of the provided number, defaults to 1000.
+    :type n_approx_points: int = 1e3,
+    :param background: background color of reference image,
+     all elements with this color will be excluded. Can be either an array/tuple of
+     RGB values as well as matplotlib color strings. Defaults to "white".
+    :type background_color: Union[str, np.ndarray, tuple]
+    :param n_regions: number of regions (indicated by different colors)
+     contained in the reference.
+    :type n_regions: int = 1,
+
+    :returns: A tuple where the first element is an n_obs x 2
+     array representing the coordinates of each grid point. Second
+     element is a n_obs numeric vector where the i:th element indicates
+     the region that the i:th observation belongs to.
+    :rtype: Tuple[np.ndarray,np.ndarray]
+
+    """
 
     if isinstance(ref_img, str):
         ref_img_pth = Path(ref_img)
@@ -183,6 +224,18 @@ def match_scales(
     adata: ad.AnnData,
     reference: Union[np.ndarray, "m.Reference"],
 ) -> None:
+    """match scale between observed and spatial domains
+
+    Simple scaling with a single value based on the distances
+    between landmarks.
+
+    :param adata: AnnData object holding observed data
+    :type adata: ad.AnnData
+    :param reference: Refernce to which observed data will be
+     transferred
+    :type reference: Union[np.ndarray, "m.Reference"]
+
+    """
 
     n_lmk_thrs = 100
 
@@ -242,6 +295,12 @@ def join_adatas(
     adatas: List[ad.AnnData],
     **kwargs,
 ) -> None:
+    """join together a set of AnnData objects
+
+    :param adatas:  AnnData objects to be merged
+    :type adatas: List[ad.AnnData]
+
+    """
 
     obs = np.array([0] + [a.shape[0] for a in adatas])
     features = pd.Index([])
@@ -299,6 +358,26 @@ def spatial_smoothing(
     sigma: float = 50,
     **kwargs,
 ) -> None:
+    """spatial smoothing function
+
+    :param adata: AnnData object holding data to be
+     smoothed
+    :type adata: ad.AnnData,
+    :param distance_key: key holding spatial coordinates in
+     .obsm
+    :type distance_key: str = "spatial",
+    :param n_neigh: number of neighbors to use for smoothing,
+     defaults to 4
+    :type n_neigh: int
+    :param coord_type: type of coordinates,
+     see squidpy documentation for more information,
+     defaults to "generic".
+    :type coord_type: Union[str, CoordType] = "generic",
+    :param sigma: sigma value to use in smoothing, higher values
+     gives higher influence to far away points on a given grid point.
+    :type sigma: float = 50,
+
+    """
 
     spatial_key = kwargs.get("spatial_key", "spatial")
     if spatial_key not in adata.obsm.keys():

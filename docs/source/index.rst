@@ -10,7 +10,8 @@ Welcome to eggplant's documentation!
    :maxdepth: 3
    :caption: Contents:
 
-
+   install
+   eggplant
 
 Indices and tables
 ==================
