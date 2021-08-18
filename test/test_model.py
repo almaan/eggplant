@@ -150,7 +150,7 @@ class TestReference(unittest.TestCase):
             meta=reference_input["meta"],
         )
         ref.clean()
-        self.assertEqual(ref.adata.X.sum(), 0)
+        self.assertEqual(ref.adata.X, None)
 
 
 if __name__ == "__main__":

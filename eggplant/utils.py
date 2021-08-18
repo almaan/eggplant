@@ -4,7 +4,7 @@ import anndata as ad
 import torch as t
 from numba import njit
 
-from typing import Union, Optional, List, Tuple, TypeVar
+from typing import Union, Optional, List, Tuple, TypeVar, Callable
 
 T = TypeVar("T")
 
@@ -85,7 +85,8 @@ def _get_feature(
     return get_feature
 
 
-def obj_to_list(obj: T) -> List[T]:
+def obj_to_list(obj: Union[T, List[T]]) -> List[T]:
+    """Object to list"""
     if not isinstance(obj, list):
         return [obj]
     else:
@@ -166,3 +167,16 @@ def average_distance_ratio(
     av_ratio = av_ratio / float(k)
 
     return av_ratio
+
+
+def max_min_transforms(
+    mx: T,
+    mn: T,
+) -> Tuple[Callable, Callable]:
+    def forward(x: T) -> T:
+        return (x - mn) / (mx - mn)
+
+    def reverse(x: T) -> T:
+        return x * (mx - mn) + mn
+
+    return forward, reverse

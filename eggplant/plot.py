@@ -43,52 +43,52 @@ def _visualize(
 ]:
 
     """
+    :param n_cols: number of desired colums
+    :type n_cols: Optional[int]
+    :param n_rows: number of desired rows
+    :type n_rows: Optional[int]
+    :param marker_size: scatter plot marker size
+    :type marker_size: float
+    :param show_landmarks: show landmarks in plot
+    :type show_landmarks: bool
+    :param  landmark_marker_size: size of landmarks
+    :type landmark_marker_size: float
+    :param side_size: side size for each figure sublot
+    :type side_size: float
+    :param landmark_cmap: colormap for landmarks
+    :type landmark_cmap: Optional[Dict[int,str]], optional
+    :param share_colorscale: set to true if subplots should all have the same colorscale
+    :type share_colorscale: bool
+    :param return_figures: set to true if figure and axes objects should be returned
+    :type return_figures: bool
+    :param include_colorbar: set to true to include colorbar
+    :type include_colorbar: bool
+    :param separate_colorbar: set to true if colorbar should be plotted
+     in separate figure, only possible when share_colorscale = True
+    :type separate_colorbar: bool
+    :param colorbar_orientation: choose between 'horizontal'
+     and 'vertical' for orientation of colorbar
+    :type colorbar_orientation: str
+    :param include_title: set to true to include title
+    :type include_title: bool
+    :param fontsize: font size of title
+    :type fontsize: str
+    :param hspace: height space between subplots.
+     If none then default matplotlib settings are used.
+    :type hspace: Optional[float]
+    :param wspace: width space between subplots.
+     If none then default matplotlib settings are used.
+    :type wspace: Optional[float]
+    :param quantile_scaling: set to true to use quantile scaling.
+     Can help to minimize quenching effect of outliers
+    :type quantile_scaling: bool
+    :param flip_y: set to true if y-axis should be flipped
+    :type flip_y: bool
+    :param colorbar_fontsize: fontsize of colorbar ticks
+    :type colorbar_fontsize: float
 
-    n_cols: Optional[int]
-        number of desired colums
-    n_rows: Optional[int]
-        number of desired rows
-    marker_size: float
-        scatter plot marker size
-    show_landmarks: bool
-        show landmarks in plot
-    landmark_marker_size: float
-        size of landmarks
-    side_size: float
-        side size for each figure sublot
-    landmark_cmap: Optional[Dict[int,str]]
-        colormap for landmarks
-    share_colorscale: bool
-        set to true if subplots should all have the same colorscale
-    return_figures: bool
-        set to true if figure and axes objects should be returned
-    include_colorbar: bool
-        set to true to include colorbar
-    separate_colorbar: bool
-        set to true if colorbar should be plotted in separate figure,
-        only possible when share_colorscale = True
-    colorbar_orientation: str
-        choose between 'horizontal' and 'vertical' for orientation of colorbar
-    include_title: bool
-        set to true to include title
-    fontsize: str
-        font size of title
-    hspace: Optional[float]
-       height space between subplots. If none then default matplotlib settings are used.
-    wspace: Optional[float]
-       width space between subplots. If none then default matplotlib settings are used.
-    quantile_scaling: bool
-       set to true to use quantile scaling. Can help to minimize quenching effect
-       of outliers.
-    flip_y: bool
-        set to true if y-axis should be flipped
-    colorbar_fontsize: float
-        fontsize of colorbar ticks
-    Returns:
-    --------
-
-    None or Figure and Axes objects,
-    depending on return_figure value.
+    :return: None or Figure and Axes objects, depending on return_figure value.
+    :rtype: Union[None,Tuple[plt.Figure,plt.Axes]]
 
     """
 
@@ -147,13 +147,13 @@ def _visualize(
             cbar.ax.tick_params(labelsize=colorbar_fontsize)
 
         if show_landmarks:
-            for l in range(lmks[k].shape[0]):
+            for ll in range(lmks[k].shape[0]):
                 ax[k].scatter(
-                    lmks[k][l, 0],
-                    lmks[k][l, 1],
+                    lmks[k][ll, 0],
+                    lmks[k][ll, 1],
                     s=landmark_marker_size,
                     marker="*",
-                    c=landmark_cmap[l % len(landmark_cmap)],
+                    c=landmark_cmap[ll % len(landmark_cmap)],
                     edgecolor="black",
                 )
 
@@ -205,6 +205,31 @@ def model_diagnostics(
     height: float = 3,
     return_figure: bool = False,
 ) -> Optional[Tuple[plt.Figure, plt.axes]]:
+    """plot loss history for models
+
+    can take either a set of models or losses.
+
+    :param models: models to investigate
+    :type models: Optional[Union[Dict[str, "m.GPModel"], "m.GPModel"]] = None,
+    :param losses: losses to visualize
+    :type losses: Optional[Union[Dict[str, np.ndarray], np.ndarray]] = None,
+    :param n_cols: number of columns, defaults to 5
+    :type n_cols: int
+    :param width: width of each subplot panel (visualizing one model's loss over time),
+     defaults to 5
+    :type width: float
+    :param height: height of each subplot panel
+     (visualizing one model's loss over time),
+     defaults to 3
+    :type height: float = 3,
+    :param return_figure: set to True if Figure and Axes objects should be returned,
+     defaults to False
+    :type return_figure: bool = False,
+
+    :return: None or Figure and Axes objects, depending on return_figure value.
+    :rtype: Union[None,Tuple[plt.Figure,plt.Axes]]
+
+    """
 
     if models is not None:
         if not isinstance(models, dict):
@@ -258,29 +283,26 @@ def model_diagnostics(
         return None
 
 
-def set_vizdoc(func):
+def _set_vizdoc(func):
     """hack to transfer documentation"""
     func.__doc__ = func.__doc__ + _visualize.__doc__
 
     return func
 
 
-@set_vizdoc
+@_set_vizdoc
 def visualize_transfer(
     reference: m.Reference,
     layer: Optional[str] = None,
     **kwargs,
 ) -> None:
 
-    """
-    Visualize results after transfer to reference
+    """Visualize results after transfer to reference
 
-    Parameters:
-    ----------
-    reference: m.Reference
-        reference object to which data has been transferred
-    layer: str
-       name of layer to use
+    :param reference: reference object to which data has been transferred
+    :type reference: m.Reference
+    :param layer: name of layer to use
+    :type layer: str
     """
 
     if layer is not None:
@@ -300,24 +322,20 @@ def visualize_transfer(
     return _visualize(data, **kwargs)
 
 
-@set_vizdoc
+@_set_vizdoc
 def visualize_observed(
     adatas: Union[Dict[str, ad.AnnData], List[ad.AnnData]],
     features: Union[str, List[str]],
     layer: Optional[str] = None,
     **kwargs,
 ) -> None:
-    """
-    Visualize observed data to be transferred
+    """Visualize observed data to be transferred
 
-    Parameters:
-    ----------
-
-    adatas: Union[Dict[str,ad.AnnData],List[ad.AnnData]]
-        List or dictionary of AnnData objects holding the,
-        data to be transferred.
-    features: Union[str,List[str]]
-        Name of feature to be visualized
+    :param adatas: List or dictionary of AnnData objects holding
+     the data to be transferred
+    :type adatas: Union[Dict[str,ad.AnnData],List[ad.AnnData]]
+    :param features: Name of feature to be visualized
+    :type features: Union[str,List[str]]
     """
 
     features = ut.obj_to_list(features)
@@ -355,7 +373,7 @@ def visualize_observed(
     return _visualize(data, **kwargs)
 
 
-def swarmplot_transfer(
+def distplot_transfer(
     ref: "m.Reference",
     inside: Dict[str, str],
     outside: Optional[Dict[str, str]] = None,
@@ -370,6 +388,42 @@ def swarmplot_transfer(
     ticks_fontsize: float = 15,
     return_figure: bool = True,
 ) -> Optional[Tuple[plt.Figure, plt.Axes]]:
+    """Swarmplot-like visualization of enrichment
+
+    :param ref: Reference holding transferred data
+    :type ref: "m.Reference",
+    :param outside: attribute to compare features within. If None all inside
+     features will be compared together.
+    :type outside: Optional[Dict[str, str]]
+    :param inside: feature to compare within outer attribute
+    :type inside: Dict[str, str],
+    :param n_cols: number of columns, defaults to None
+    :type n_cols: Optional[int]
+    :param n_rows: number of rows, defaults to None
+    :type n_rows: Optional[int] = None,
+    :param side_size: size of each outer panel, defaults to 4
+    :type side_size: float
+    :param swarm_marker_style: data marker style, defaults to None
+    :type swarm_marker_style: Optional[Dict[str, Any]]
+    :param mean_marker_style: marker style of mean indicator, defaults to None
+    :type mean_marker_style: Optional[Dict[str, Any]]
+    :param display_grid: set to True if grid shall be displayed in background,
+     defaults to True
+    :type display_grid: bool
+    :param title_fontsize: fontsize of title, defaults to 25
+    :type title_fontsize: float
+    :param label_fontsize: fontsize of x-and ylabel, defaults to 20
+    :type label_fontsize: float
+    :param ticks_fontsize: fontisize of x-and yticks, defaults to 15
+    :type ticks_fontsize: float
+    :param return figure: set to True if Figure and Axes objexts should be returned,
+     defaults to True
+    :type return_figure: bool
+
+    :return: None or Figure and Axes objects, depending on return_figure value.
+    :rtype: Union[None,Tuple[plt.Figure,plt.Axes]]
+
+    """
 
     adata = ref.adata
 
@@ -474,10 +528,23 @@ def swarmplot_transfer(
 
 
 class ColorMapper:
+    """helper class for colormaps
+
+    makes it easier to get color values for
+    arrays and lists.
+
+    """
+
     def __init__(
         self,
         cmap: Dict[T, str],
     ) -> None:
+        """Constructor class
+
+        :param cmap: colormap dictionary
+        :type cmap: Dict[T,str]
+
+        """
 
         self.n_c = len(cmap)
         self.cdict = cmap

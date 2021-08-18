@@ -4,27 +4,48 @@ import anndata as ad
 import numpy as np
 
 import copy
+from collections import OrderedDict
 
 import pandas as pd
 import scanpy as sc
 
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Dict
+from typing_extensions import Literal
 
 from . import utils as ut
 
 
 class GPModel(gp.models.ExactGP):
+    """Model for GP Regression"""
+
     def __init__(
         self,
         landmark_distances: Union[t.Tensor, pd.DataFrame, np.ndarray],
-        feature_values: t.tensor,
+        feature_values: t.Tensor,
         landmark_names: Optional[List[str]] = None,
         likelihood: Optional[gp.likelihoods.Likelihood] = None,
         mean_fun: Optional[gp.means.Mean] = None,
-        covar_fun: Optional[gp.kernels.Kernel] = None,
         kernel_fun: Optional[gp.kernels.Kernel] = None,
-        device: str = "cpu",
+        device: Literal["cpu", "gpu"] = "cpu",
     ) -> None:
+
+        """Constructor method
+
+        :param landmark_distance: n_obs x n_landmarks array with distance
+         to each landmark for every observation
+        :type landmark_distance: Union[t.Tensor, pd.DataFrame, np.ndarray]
+        :param feature_values: n_obs x n_feature array with feature values
+         for each observation
+        :type feature_values: t.Tensor
+        :param likelihood: likelihood function
+        :type likelihood: gp.likelihoods.Likelihood, optional
+        :param mean_fun: mean function
+        :type mean_fun: gp.means.Mean, optional
+        :param kernel: Kernel to use in covariance function
+        :type kernel: gp.kernels.Kernel, optional
+        :param device: device to execute operations on, defaults to "cpu"
+        :type device: Literal["cpu","gpu"]
+        """
 
         self.S = landmark_distances.shape[0]
         self.L = landmark_distances.shape[1]
@@ -63,13 +84,12 @@ class GPModel(gp.models.ExactGP):
         if mean_fun is None:
             self.mean_module = gp.means.ConstantMean()
 
-        if covar_fun is None:
-            if kernel_fun is None:
-                kernel = gp.kernels.RQKernel()
-            else:
-                kernel = kernel_fun()
+        if kernel_fun is None:
+            kernel = gp.kernels.RQKernel()
+        else:
+            kernel = kernel_fun()
 
-            self.covar_module = gp.kernels.ScaleKernel(kernel)
+        self.covar_module = gp.kernels.ScaleKernel(kernel)
 
         self.mll = gp.mlls.ExactMarginalLogLikelihood
 
@@ -80,6 +100,7 @@ class GPModel(gp.models.ExactGP):
     def loss_history(
         self,
     ) -> List[float]:
+        """Loss history record"""
         if self._loss_history is not None:
             return copy.deepcopy(self._loss_history)
 
@@ -88,6 +109,7 @@ class GPModel(gp.models.ExactGP):
         self,
         history: List[float],
     ) -> None:
+        """Update loss history"""
         if self._loss_history is None:
             self._loss_history = history
         else:
@@ -99,6 +121,7 @@ class GPModel(gp.models.ExactGP):
         self,
         x: t.tensor,
     ) -> t.tensor:
+        """forward step in prediction"""
 
         mean_x = self.mean_module(x)
         covar_x = self.covar_module(x)
@@ -107,12 +130,23 @@ class GPModel(gp.models.ExactGP):
 
 
 class Reference:
+    """Reference Container"""
+
     def __init__(
         self,
         domain: Union[t.tensor, np.ndarray],
         landmarks: Union[t.tensor, np.ndarray, pd.DataFrame],
         meta: Optional[Union[pd.DataFrame, dict]] = None,
     ) -> None:
+        """Constructor function
+
+        :param domain: n_obs x n_dims spatial coordinates of observations
+        :type domain: Union[t.tensor, np.ndarray]
+        :param landmarks: n_landmarks x n_dims spatial coordinates of landmarks
+        :type landmarks: Union[t.tensor, np.ndarray, pd.DataFrame]
+        :param meta: n_obs x n_categories meta data
+        :type meta: Optional[Union[pd.DataFrame, dict]], optional
+        """
 
         if isinstance(domain, np.ndarray):
             domain = t.tensor(domain.astype(np.float32))
@@ -129,11 +163,10 @@ class Reference:
         mn = t.min(domain)
         mx = t.max(domain)
 
-        self.fwd_coordinate_transform = lambda x: (x - mn) / (mx - mn)
-        self.rev_coordinate_transform = lambda x: x * (mx - mn) + mn
+        self.fwd_crd_trans, self.rev_crd_tans = ut.max_min_transforms(mx, mn)
 
-        self.domain = self.fwd_coordinate_transform(domain)
-        self.landmarks = self.fwd_coordinate_transform(landmarks)
+        self.domain = self.fwd_crd_trans(domain)
+        self.landmarks = self.fwd_crd_trans(landmarks)
         self.ldists = t.cdist(
             self.domain,
             self.landmarks,
@@ -142,71 +175,95 @@ class Reference:
 
         self.S = self.ldists.shape[0]
         self.L = self.landmarks.shape[0]
-        self._obs_meta_df = None
+        self.n_models = 0
 
-        self._initialize(meta)
+        self._add_obs_meta(meta)
+        self._models = OrderedDict()
+        self._obs_meta = None
+        self._var_meta = OrderedDict()
+        self.adata = ad.AnnData()
+        self.adata_stage_compile = -1
 
-    def _initialize(
+    def _add_obs_meta(
         self,
         meta: Optional[Union[pd.DataFrame, dict, list, np.ndarray, t.tensor]] = None,
     ) -> None:
+        """add observational meta data"""
 
         # if meta is not empty
         if meta is not None:
             # if dictionary
             if isinstance(meta, dict):
-                self._obs_meta_df = pd.DataFrame(meta)
+                self._obs_meta = pd.DataFrame(meta)
             # if a list
             elif isinstance(meta, list):
                 # if nested list
                 if isinstance(meta[0], list):
-                    self._obs_meta_df = pd.DataFrame(
-                        {"meta_{}".format(lk): mt for lk, mt in enumerate(meta)}
-                    )
+                    df = OrderedDict()
+                    for lk, mt in enumerate(meta):
+                        df[f"X{lk}"] = mt
+                    self._obs_meta = pd.DataFrame(df)
                 # if flat list
                 else:
-                    self._obs_meta_df = pd.DataFrame(dict(meta_0=meta))
+                    self._obs_meta = pd.DataFrame(dict(meta_0=meta))
             # if meta is array or tensor
             elif isinstance(meta, (np.ndarray, t.Tensor)):
                 # if meta tensor, then numpy transform and detach
+
                 if isinstance(meta, t.Tensor):
-                    self._obs_meta_df = pd.DataFrame(meta.detach().numpy())
+                    _meta = pd.DataFrame(meta.detach().numpy())
+                else:
+                    _meta = meta
                 # if meta is 2d array
-                if len(meta.shape) == 2:
-                    self._obs_meta_df = pd.DataFrame(
-                        {"meta_{}".format(k): meta[:, k] for k in range(meta.shape[1])}
+                if len(_meta.shape) == 2:
+                    columns = [f"X{x}" for x in range(meta.shape[1])]
+                    self._obs_meta = pd.DataFrame(
+                        _meta,
+                        columns=columns,
                     )
-                # if meta is singular array
+                    # if meta is singular array
                 elif len(meta.shape) == 1:
-                    self._obs_meta_df = pd.DataFrame(dict(meta_0=meta))
+                    self._obs_meta = pd.DataFrame({"X0": _meta})
                 # if meta is array with dim > 2
                 else:
                     raise ValueError
             # if meta is data frame
             elif isinstance(meta, pd.DataFrame):
-                self._obs_meta_df = meta
+                self._obs_meta = meta
             # if meta is none of the above raise error
             else:
                 raise ValueError(
                     "Meta with format : {} is not supported".format(type(meta))
                 )
 
-        # if obs_meta is not none, need to expand anndata
-        if self._obs_meta_df is not None:
-            self.adata = ad.AnnData(np.empty((self.S, 1)), obs=self._obs_meta_df)
-        # if obs-meta is none we let anndata be empty
-        else:
-            self.adata = ad.AnnData()
+    def _add_model(
+        self,
+        feature: np.ndarray,
+        name: Optional[str] = None,
+        meta: Optional[Dict[str, Union[str, float, int]]] = None,
+    ) -> None:
+        """add result from model"""
 
-        self.n_models = 0
+        assert (
+            len(feature) == self.S
+        ), "Dimension mismatch between new transfer and existing data"
+
+        if name is None:
+            name = "Transfer_{}".format(self.n_models)
+
+        self._models[name] = feature
+        self._var_meta[name] = meta if meta is not None else {}
+        self.n_models += 1
 
     def clean(
         self,
     ) -> None:
-        if self.n_models > 0:
-            del self.adata
-            self.adata = ad.AnnData()
-            self._initialize()
+        """clean reference from transferred data"""
+        self.n_models = 0
+        self._adata_stage_compile = -1
+        self._models = OrderedDict()
+        self._var_meta = OrderedDict()
+        self.adata = ad.AnnData()
 
     def transfer(
         self,
@@ -214,12 +271,18 @@ class Reference:
         meta: Optional[pd.DataFrame] = None,
         names: Optional[Union[List[str], str]] = None,
     ) -> None:
+        """transfer fitted models to reference
+
+        :param models: Models to be transferred
+        :type models: Union[GPModel, List[GPModel]]
+        :param meta: model meta data, e.g., sample
+        :type meta: Optional[pd.DataFrame], optional
+        :param names: name of models
+        :type names: Optional[Union[List[str], str], optional
+        """
 
         _models = ut.obj_to_list(models)
         names = ut.obj_to_list(names)
-
-        add_models = len(_models)
-        add_mat = np.zeros((self.S, add_models))
 
         for k, m in enumerate(_models):
             assert all(
@@ -231,83 +294,70 @@ class Reference:
 
             with t.no_grad():
                 out = m(self.ldists[:, pos].to(m.device))
-                add_mat[:, k] = out.mean.cpu().detach().numpy()
+                pred = out.mean.cpu().detach().numpy()
             m = m.cpu()
-
-        tmp_anndata = ad.AnnData(add_mat)
-
-        if names is None:
-            tmp_anndata.columns = [
-                f"Transfer_{x}"
-                for x in range(self.n_models, self.n_models + add_models)
-            ]
-        else:
-            tmp_anndata.columns = names
-
-        if self.n_models > 0:
-            if meta is not None:
-                tmp_var = meta.copy()
-                tmp_var.index = tmp_anndata.columns
-                new_meta = ut.match_data_frames(
-                    self.adata.var,
-                    tmp_var,
-                )
-            else:
-                new_meta = ut.match_data_frames(
-                    self.adata.var,
-                    pd.DataFrame(
-                        [],
-                        index=tmp_anndata.columns,
-                    ),
-                )
-            if self._obs_meta_df is not None:
-                tmp_anndata.obs = self._obs_meta_df
-
-            self.adata = ad.concat(
-                (self.adata, tmp_anndata),
-                axis=1,
-                # merge = "first",
+            name = names[k] if names is not None else f"Transfer_{k}"
+            self._add_model(
+                pred,
+                name,
             )
 
-            self.adata.var = new_meta
-        else:
-            self.adata = tmp_anndata
-            self.adata.var.index = tmp_anndata.columns
-            if meta is not None:
-                self.adata.var = meta
+        self._build_adata()
 
-        if self._obs_meta_df is not None:
-            self.adata.obs = self._obs_meta_df
-        self.n_models = self.n_models + add_models
-        self.adata.obsm["spatial"] = self.domain.detach().numpy()
+    def _build_adata(
+        self,
+    ):
+        """helper function to build AnnData object"""
+        if self.adata_stage_compile != self.n_models:
+            df = pd.DataFrame(self._models)
+            var = pd.DataFrame(self._var_meta).T
+            spatial = self.domain.detach().numpy()
+            self.adata = ad.AnnData(
+                df,
+                var=var,
+                obs=self._obs_meta,
+            )
+            self.adata.obsm["spatial"] = spatial
+            self.adata_stage_compile = self.n_models
 
     def plot(
         self,
-        samples: Optional[Union[List[str], str]] = None,
+        models: Optional[Union[List[str], str]] = None,
         *args,
         **kwargs,
     ) -> None:
+        """quick plot function
 
-        self.adata.obsm["spatial"] = self.domain.detach().numpy()
+        :param models: models to be visualized, if None then all are displayed
+        :type models: Union[List[str], str], optional
+        :param *args: args to sc.pl.spatial
+        :param **kwargs: kwargs to sc.pl.spatial
+        """
 
-        if samples is None:
-            samples = self.adata.var.index
-        elif isinstance(samples, str) and samples == "average":
+        if models is None:
+            models = self.adata.var.index
+        elif isinstance(models, str) and models == "average":
             self.adata.obs["average"] = self.adata.X.mean(axis=1)
         else:
-            if not isinstance(samples, list):
-                samples = [samples]
+            if not isinstance(models, list):
+                models = [models]
 
         sc.pl.spatial(
             self.adata,
-            color=samples,
+            color=models,
             *args,
             **kwargs,
         )
-        if isinstance(samples, str) and samples == "average":
+        if isinstance(models, str) and models == "average":
             self.adata.obs = self.adata.obs.drop(["average"], axis=1)
 
     def average_representation(self, by: str = "feature"):
+        """produce average representation
+
+        :param by: average representation with respect to this meta data feature
+        :type by: str, default to "feature"
+        """
+
         if self.adata.var.shape[1] <= 0:
             raise ValueError("No meta data provided")
         elif by not in self.adata.var.columns:
