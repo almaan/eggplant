@@ -1,0 +1,21 @@
+.wy-side-nav-search, .wy-nav-top {
+    background: #757373;
+}
+.wy-menu-vertical header, .wy-menu-vertical p.caption{
+    color: #AA00D4
+}
+
+
+html.writer-html4 .rst-content dl:not(.docutils)>dt,
+html.writer-html5 .rst-content dl[class]:not(.option-list):not(.field-list):not(.footnote):not(.glossary):not(.simple)>dt {
+    background: #cfb8d56e;
+    color:#aa00d4;
+    border-top:3px solid #aa00d4;
+}
+
+a {
+    color:#7b0399;
+}
+a:hover {
+    color:#c660df
+}

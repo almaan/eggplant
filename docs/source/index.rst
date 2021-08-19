@@ -8,10 +8,17 @@ Welcome to eggplant's documentation!
 
 .. toctree::
    :maxdepth: 3
-   :caption: Contents:
+   :caption: Getting Started:
 
+   about
    install
    eggplant
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Examples
+
+   notebooks/mob-full-analysis.ipynb
 
 Indices and tables
 ==================

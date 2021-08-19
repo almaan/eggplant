@@ -48,7 +48,10 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.githubpages",
     "sphinx_rtd_theme",
+    "nbsphinx",
+    "sphinxcontrib.bibtex",
 ]
+bibtex_bibfiles = ["ref.bib"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -101,6 +104,7 @@ html_theme_options = {
     "logo_only": False,
     "display_version": False,
 }
+html_css_files = ["css/custom.css"]
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
