@@ -223,13 +223,10 @@ def transfer_to_reference(
                 )
 
             # experimental
-            meta_info = pd.DataFrame(
-                dict(
+            meta_info = dict(
                     model=model_name,
                     feature=feature,
-                ),
-                index=[full_name],
-            )
+                )
 
             reference.transfer(
                 model,

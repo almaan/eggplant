@@ -300,15 +300,18 @@ class Reference:
             self._add_model(
                 pred,
                 name,
+                meta,
             )
 
         self._build_adata()
 
     def _build_adata(
         self,
+        force_build: bool = False,
     ):
         """helper function to build AnnData object"""
-        if self.adata_stage_compile != self.n_models:
+        if self.adata_stage_compile != self.n_models\
+           or force_build:
             df = pd.DataFrame(self._models)
             var = pd.DataFrame(self._var_meta).T
             spatial = self.domain.detach().numpy()
@@ -365,20 +368,14 @@ class Reference:
 
         uni_feature_vals = np.unique(self.adata.var[by].values)
         for fv in uni_feature_vals:
-            name = "mean_{}".format(fv)
+            name = "average_{}".format(fv)
             sel_idx = self.adata.var[by].values == fv
-            mean_vals = self.adata.values[:, sel_idx].mean(axis=1)[:, np.newaxis]
-            tmp_var = self.adata.var.iloc[sel_idx, :]
-            tmp_var[by] = name
-            tmp_obs = self.adata.obs
-            tmp_adata = ad.AnnData(
-                mean_vals,
-                var=tmp_var,
-                obs=tmp_obs,
-            )
+            mean_vals = self.adata.X[:, sel_idx].mean(axis=1)
+            self._models[name] = mean_vals.flatten()
+            self._var_meta[name] = {by : fv}
+            if by != "average":
+                self._var_meta[name]["model"] = "average"
 
-            self.adata = ad.concat(
-                (self.adata, tmp_adata),
-                axis=1,
-                merge="first",
-            )
+        self._build_adata(force_build = True)
+
+

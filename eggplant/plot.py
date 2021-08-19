@@ -88,7 +88,7 @@ def _visualize(
     :type colorbar_fontsize: float
 
     :return: None or Figure and Axes objects, depending on return_figure value.
-    :rtype: Union[None,Tuple[plt.Figure,plt.Axes]]
+    :rtype: Optional[Tuple[plt.Figure,plt.Axes]]
 
     """
 
@@ -227,7 +227,7 @@ def model_diagnostics(
     :type return_figure: bool = False,
 
     :return: None or Figure and Axes objects, depending on return_figure value.
-    :rtype: Union[None,Tuple[plt.Figure,plt.Axes]]
+    :rtype: Optional[Tuple[plt.Figure,plt.Axes]]
 
     """
 
@@ -292,26 +292,53 @@ def _set_vizdoc(func):
 
 @_set_vizdoc
 def visualize_transfer(
-    reference: m.Reference,
+    reference: Union[m.Reference,ad.AnnData],
+    attributes: Optional[Union[List[str],str]] = None,
     layer: Optional[str] = None,
     **kwargs,
-) -> None:
+) -> Optional[Tuple[plt.Figure,plt.Axes]]:
 
     """Visualize results after transfer to reference
 
-    :param reference: reference object to which data has been transferred
-    :type reference: m.Reference
+    :param reference: reference object or AnnData holding
+     transferred values
+    :type reference: Union[m.Reference,as.AnnData]
+    :param attributes: visualize transferred models
+     with these attributes. Must be found in .var slot.
+     If none specified, all transfers will be visualized.
+    :type attributes: Optional[Union[List[str],str]]
+    :type features: Optional[Union[List[str],str]]
     :param layer: name of layer to use
     :type layer: str
     """
 
-    if layer is not None:
-        counts = reference.adata.layers[layer]
+    if isinstance(reference,ad.AnnData):
+        _adata = reference
+    elif isinstance(reference,m.Reference):
+        _adata = reference.adata
+
+
+    if attributes is not None:
+        attributes = ut.obj_to_list(attributes)
+        keep_models = np.zeros(_adata.shape[1])
+        for attr in attributes:
+            attr_col = _adata.var.values == attr
+            attr_col = np.nansum(attr_col,axis=1) > 0
+            keep_models[attr_col] = 1
+        keep_models = keep_models.astype(bool)
+        assert(sum(keep_models) > 0),\
+        "Attribute(s) was/were not found."
     else:
-        counts = reference.adata.X
+        keep_models = np.ones(_adata.shape[1]).astype(bool)
+
+    if layer is not None:
+        counts = _adata.layers[layer][:,keep_models]
+    else:
+        counts = _adata.X[:,keep_models]
+
     lmks = reference.landmarks.detach().numpy()
     crds = reference.domain.detach().numpy()
-    names = reference.adata.var.index.tolist()
+    names = reference.adata.var.index[keep_models].tolist()
     n_reps = counts.shape[1]
     data = [[counts[:, x] for x in range(n_reps)]]
     for v in [lmks, crds]:
@@ -560,12 +587,18 @@ class ColorMapper:
     ) -> Union[str, np.ndarray]:
 
         if hasattr(x, "__len__") or n_elements:
-            if n_elements:
-                n = x
+            uni = set(x)
+            has_keys = all([k in self.cdict.keys() for k in uni])
+
+            if has_keys:
+                clr = np.array([self.cdict[c] for c in x])
             else:
-                n = len(x)
-            clr = [self.numeric_cdict[ii % self.n_c] for ii in range(n)]
-            clr = np.array(clr)
+                if n_elements:
+                    n = x
+                else:
+                    n = len(x)
+                    clr = [self.numeric_cdict[ii % self.n_c] for ii in range(n)]
+                    clr = np.array(clr)
         else:
             if x in self.cdict.keys():
                 clr = self.cdict[x]
