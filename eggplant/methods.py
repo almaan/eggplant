@@ -1,18 +1,19 @@
-import torch as t
-import gpytorch as gp
-import anndata as ad
-import numpy as np
-import pandas as pd
+import gc
+from contextlib import nullcontext
+from typing import Dict, List, Optional, Union, Tuple
 
-from typing import Optional, List, Union, Dict
+import anndata as ad
+import gpytorch as gp
+import numpy as np
+from scipy.spatial.distance import cdist
+import torch as t
+import tqdm
 from typing_extensions import Literal
 
 from . import models as m
 from . import utils as ut
 
-from contextlib import nullcontext
-import gc
-import tqdm
+from collections import OrderedDict
 
 
 def _optimizer_to(optimizer, device):
@@ -173,23 +174,7 @@ def transfer_to_reference(
     msg = "[Processing] ::  Model : {} | Feature : {} | Transfer : {}/{}"
 
     for k, _adata in enumerate(adatas):
-        if subsample is not None:
-            if subsample < 1:
-                idx = np.random.choice(
-                    len(_adata),
-                    replace=False,
-                    size=int(len(_adata) * subsample),
-                )
-                adata = _adata[idx, :]
-            else:
-                idx = np.random.choice(
-                    len(_adata),
-                    replace=False,
-                    size=int(subsample),
-                )
-                adata = _adata[idx, :]
-        else:
-            adata = _adata
+        adata = ut.subsample(_adata)
 
         model_name = names[k] if names is not None else f"Model_{k}"
 
@@ -224,9 +209,9 @@ def transfer_to_reference(
 
             # experimental
             meta_info = dict(
-                    model=model_name,
-                    feature=feature,
-                )
+                model=model_name,
+                feature=feature,
+            )
 
             reference.transfer(
                 model,
@@ -251,3 +236,98 @@ def transfer_to_reference(
         return_object = list(return_object.values())[0]
 
     return return_object
+
+
+def estimate_n_lanmdarks(
+    adatas: Union[ad.AnnData, List[ad.AnnData], Dict[str, ad.AnnData]],
+    n_max_lmks: Union[float, int] = 50,
+    n_evals: int = 10,
+    layer: Optional[str] = None,
+    device: Literal["cpu", "gpu"] = "cpu",
+    n_epochs: int = 1000,
+    learning_rate: float = 0.01,
+    subsample: Optional[Union[float, int]] = None,
+    verbose: bool = False,
+    spatial_key: str = "spatial",
+    max_cg_iterations: int = 1000,
+    tail_length: int = 50,
+    seed: int = 1,
+) -> Tuple[np.ndarray, Union[Dict[str, List[float]], List[float]]]:
+
+    if not isinstance(adatas, (list, dict)):
+        adatas = [adatas]
+        names = None
+    elif isinstance(adatas, dict):
+        names = list(adatas.keys())
+        adatas = list(adatas.values())
+    else:
+        names = None
+
+    likelihoods = OrderedDict() if names is not None else []
+
+    n_adatas = len(adatas)
+    msg = "[Processing] :: Sample : {} ({}/{})"
+
+    n_lmks = np.floor(np.linspace(1, n_max_lmks, n_evals)).astype(int)
+    n_lmks = np.unique(n_lmks)
+
+    tail_length = min(tail_length, n_epochs)
+
+    np.random.seed(seed)
+
+    for k, _adata in enumerate(adatas):
+
+        model_name = names[k] if names is not None else None
+
+        crd = _adata.obsm[spatial_key]
+        crd = (crd - crd.min()) / (crd.max() - crd.min())
+        lmks = crd[np.random.choice(len(crd), n_lmks[-1], replace=False), :]
+        landmark_distances = cdist(crd, lmks)
+        feature_values = np.asarray(_adata.X.sum(axis=1)).flatten()
+        feature_values = ut.normalize(feature_values)
+        feature_values, idx = ut.subsample(
+            feature_values, keep=subsample, return_index=True
+        )
+        landmark_distances = landmark_distances[idx, :]
+
+        sample_likelihoods = np.zeros(len(n_lmks))
+
+        if verbose:
+            print(
+                msg.format(model_name, k + 1, n_adatas),
+                flush=True,
+            )
+
+            # TODO: fix tqdm
+            lmk_iterator = enumerate(n_lmks)
+        else:
+            lmk_iterator = enumerate(n_lmks)
+
+        for w, n_lmk in lmk_iterator:
+
+            sub_landmark_distances = landmark_distances[:, 0:n_lmk]
+            t.manual_seed(seed)
+            model = m.GPModel(
+                ut._to_tensor(sub_landmark_distances),
+                ut._to_tensor(feature_values),
+                device=device,
+            )
+
+            with gp.settings.max_cg_iterations(max_cg_iterations):
+                fit(
+                    model,
+                    n_epochs=n_epochs,
+                    learning_rate=learning_rate,
+                    verbose=verbose,
+                )
+
+            final_ll = model.loss_history
+            final_ll = np.mean(np.array(final_ll)[-tail_length::])
+            sample_likelihoods[w] = final_ll
+
+        if names is None:
+            likelihoods.append(sample_likelihoods)
+        else:
+            likelihoods[names[k]] = sample_likelihoods
+
+    return (n_lmks, likelihoods)

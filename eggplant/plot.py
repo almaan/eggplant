@@ -292,11 +292,11 @@ def _set_vizdoc(func):
 
 @_set_vizdoc
 def visualize_transfer(
-    reference: Union[m.Reference,ad.AnnData],
-    attributes: Optional[Union[List[str],str]] = None,
+    reference: Union[m.Reference, ad.AnnData],
+    attributes: Optional[Union[List[str], str]] = None,
     layer: Optional[str] = None,
     **kwargs,
-) -> Optional[Tuple[plt.Figure,plt.Axes]]:
+) -> Optional[Tuple[plt.Figure, plt.Axes]]:
 
     """Visualize results after transfer to reference
 
@@ -312,29 +312,27 @@ def visualize_transfer(
     :type layer: str
     """
 
-    if isinstance(reference,ad.AnnData):
+    if isinstance(reference, ad.AnnData):
         _adata = reference
-    elif isinstance(reference,m.Reference):
+    elif isinstance(reference, m.Reference):
         _adata = reference.adata
-
 
     if attributes is not None:
         attributes = ut.obj_to_list(attributes)
         keep_models = np.zeros(_adata.shape[1])
         for attr in attributes:
             attr_col = _adata.var.values == attr
-            attr_col = np.nansum(attr_col,axis=1) > 0
+            attr_col = np.nansum(attr_col, axis=1) > 0
             keep_models[attr_col] = 1
         keep_models = keep_models.astype(bool)
-        assert(sum(keep_models) > 0),\
-        "Attribute(s) was/were not found."
+        assert sum(keep_models) > 0, "Attribute(s) was/were not found."
     else:
         keep_models = np.ones(_adata.shape[1]).astype(bool)
 
     if layer is not None:
-        counts = _adata.layers[layer][:,keep_models]
+        counts = _adata.layers[layer][:, keep_models]
     else:
-        counts = _adata.X[:,keep_models]
+        counts = _adata.X[:, keep_models]
 
     lmks = reference.landmarks.detach().numpy()
     crds = reference.domain.detach().numpy()
@@ -605,3 +603,83 @@ class ColorMapper:
             else:
                 raise ValueError(f"{x} is not supported as value.")
         return clr
+
+
+def landmark_diagnostics(
+    lmk_eval_res: Tuple[List[List[float]], np.ndarray],
+    side_size: Optional[Union[Tuple[float, float], float]] = None,
+    title_fontsize: float = 20,
+    line_style_dict: Optional[Dict[str, Any]] = None,
+    label_style_dict: Optional[Dict[str, Any]] = None,
+    ticks_style_dict: Optional[Dict[str, Any]] = None,
+    return_figure: bool = False,
+) -> Optional[Tuple[plt.Figure, plt.Axes]]:
+
+    n_samples = len(lmk_eval_res[1])
+    n_evals = len(lmk_eval_res[0])
+
+    if isinstance(lmk_eval_res[1], dict):
+        lls = list(lmk_eval_res[1].values())
+        names = list(lmk_eval_res[1].keys())
+    else:
+        lls = lmk_eval_res[1]
+        names = [f"Sample : {k}" for k in range(n_samples)]
+
+    if side_size is None:
+        figsize = (4 + n_evals * 0.2, 4 * n_samples)
+    else:
+        if isinstance(side_size, (list, tuple)):
+            if len(side_size) == 1:
+                figsize = (side_size[0], side_size[0] * n_samples)
+            else:
+                figsize = (side_size[0], side_size[1] * n_samples)
+        else:
+            figsize = (side_size, side_size * n_samples)
+
+    _line_style_dict = dict(
+        marker="o",
+        linestyle="-",
+        color="black",
+        markerfacecolor="red",
+        markeredgecolor="black",
+    )
+
+    if line_style_dict is not None:
+        _line_style_dict.update(line_style_dict)
+    _ticks_style_dict = dict(labelsize=15)
+
+    if ticks_style_dict is not None:
+        _ticks_style_dict.update(ticks_style_dict)
+
+    _label_style_dict = dict(fontsize=20)
+    if label_style_dict is not None:
+        _label_style_dict.update(label_style_dict)
+
+    fig, ax = plt.subplots(n_samples, 1, figsize=figsize, squeeze=False)
+    ax = ax.flatten()
+
+    for k, axx in enumerate(ax):
+        axx.plot(
+            lmk_eval_res[0],
+            lls[k],
+            **_line_style_dict,
+        )
+        axx.set_xlabel(
+            "No. Landmarks",
+            **_label_style_dict,
+        )
+        axx.set_ylabel(
+            "MLL",
+            **_label_style_dict,
+        )
+        axx.xaxis.set_tick_params(**_ticks_style_dict)
+        axx.yaxis.set_tick_params(**_ticks_style_dict)
+        axx.spines["right"].set_visible(False)
+        axx.spines["top"].set_visible(False)
+
+        axx.set_title(names[k], fontsize=title_fontsize)
+
+    if return_figure:
+        return (fig, ax)
+
+    plt.show()
