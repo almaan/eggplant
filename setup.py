@@ -20,7 +20,7 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: Tested on Linux",
     ],
-    python_requires='>=3.7',
+    python_requires=">=3.7",
     install_requires=[
         "numpy>=1.19.0",
         "pandas>=1.0.0",
@@ -31,5 +31,6 @@ setuptools.setup(
         "gpytorch>=1.4.2",
         "squidpy>=1.0.0",
         "morphops>=0.1.12",
-    ]
+        "kneed>=0.7.0",
+    ],
 )

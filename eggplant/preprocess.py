@@ -53,7 +53,7 @@ def get_landmark_distance(
 
     distances = np.zeros((n_obs, n_landmarks))
     obs_crd = adata.obsm["spatial"].copy()
-    lmk_crd = adata.uns["curated_landmarks"].copy()
+    lmk_crd = adata.uns[landmark_position_key].copy()
 
     if isinstance(lmk_crd, pd.DataFrame):
         lmk_crd_names = list(lmk_crd.index)
@@ -364,15 +364,15 @@ def spatial_smoothing(
      smoothed
     :type adata: ad.AnnData,
     :param distance_key: key holding spatial coordinates in
-     .obsm
-    :type distance_key: str = "spatial",
+     .obsm, defaults to spatial
+    :type distance_key: str
     :param n_neigh: number of neighbors to use for smoothing,
      defaults to 4
     :type n_neigh: int
     :param coord_type: type of coordinates,
      see squidpy documentation for more information,
      defaults to "generic".
-    :type coord_type: Union[str, CoordType] = "generic",
+    :type coord_type: Union[str, CoordType],
     :param sigma: sigma value to use in smoothing, higher values
      gives higher influence to far away points on a given grid point.
     :type sigma: float = 50,

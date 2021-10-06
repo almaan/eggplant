@@ -606,7 +606,11 @@ class ColorMapper:
 
 
 def landmark_diagnostics(
-    lmk_eval_res: Tuple[List[List[float]], np.ndarray],
+    lmk_eval_res: Tuple[
+        List[List[float]],
+        Union[List[float], Dict[str, float]],
+        Optional[Union[List[float], Dict[str, float]]],
+    ],
     side_size: Optional[Union[Tuple[float, float], float]] = None,
     title_fontsize: float = 20,
     line_style_dict: Optional[Dict[str, Any]] = None,
@@ -621,6 +625,10 @@ def landmark_diagnostics(
     if isinstance(lmk_eval_res[1], dict):
         lls = list(lmk_eval_res[1].values())
         names = list(lmk_eval_res[1].keys())
+        if lmk_eval_res[2] is not None:
+            knees = list(lmk_eval_res[2].values())
+        else:
+            knees = [None]
     else:
         lls = lmk_eval_res[1]
         names = [f"Sample : {k}" for k in range(n_samples)]
@@ -672,6 +680,7 @@ def landmark_diagnostics(
             "MLL",
             **_label_style_dict,
         )
+        axx.set_xticks(lmk_eval_res[0])
         axx.xaxis.set_tick_params(**_ticks_style_dict)
         axx.yaxis.set_tick_params(**_ticks_style_dict)
         axx.spines["right"].set_visible(False)
@@ -679,7 +688,83 @@ def landmark_diagnostics(
 
         axx.set_title(names[k], fontsize=title_fontsize)
 
+        if knees[k] is not None:
+            axx.axvline(
+                x=knees[k],
+                color="black",
+                linestyle="dashed",
+            )
+            axx.axvspan(
+                xmin=knees[k],
+                xmax=lmk_eval_res[0][-1],
+                alpha=0.3,
+                color="blue",
+            )
     if return_figure:
         return (fig, ax)
 
     plt.show()
+
+
+def visualize_dge(
+    ref: "m.GPModel",
+    dge_res: Dict[str, np.ndarray],
+    cmap: str = "RdBu",
+    n_cols: int = 4,
+    marker_size: float = 10,
+    side_size=8,
+    title_fontsize=20,
+    colorbar_fontsize=20,
+) -> Tuple[plt.Figure, plt.Axes]:
+
+    n_comps = len(dge_res)
+    if cmap in plt.colormaps():
+        cmap = eval("plt.cm." + cmap)
+    else:
+        cmap = plt.cm.RdBu
+
+    n_rows, n_cols = ut.get_figure_dims(n_total=n_comps, n_cols=n_cols)
+    crd = ref.adata.obsm["spatial"]
+    figsize = (side_size * n_cols, side_size * n_rows)
+    fig, ax = plt.subplots(n_rows, n_cols, figsize=figsize)
+
+    ax = ax.flatten()
+
+    for k, (comp, vals) in enumerate(dge_res.items()):
+        is_sig = vals["sig"]
+
+        ax[k].scatter(
+            crd[~is_sig, 0],
+            crd[~is_sig, 1],
+            c="lightgray",
+            s=marker_size,
+        )
+
+        _sc = ax[k].scatter(
+            crd[is_sig, 0],
+            crd[is_sig, 1],
+            c=vals["diff"][is_sig],
+            cmap=cmap,
+            s=marker_size,
+        )
+
+        pos_name, neg_name = comp.split("_vs_")
+        title = r"$\Delta($" + pos_name + "," + neg_name + ")"
+        ax[k].set_title(title, fontsize=title_fontsize)
+
+        ax[k].set_aspect("equal")
+        cbar = fig.colorbar(_sc, ax=ax[k])
+        cbar.ax.tick_params(labelsize=colorbar_fontsize)
+
+        o_lbl = cbar.ax.get_yticks()
+        n_lbl = (
+            [str(o_lbl[0]) + f" ({neg_name})"]
+            + [f"{x:0.2f}" for x in o_lbl[1:-1]]
+            + [str(o_lbl[-1]) + f" ({pos_name})"]
+        )
+        cbar.ax.set_yticklabels(n_lbl)
+
+    for axx in ax:
+        axx.axis("off")
+
+    return fig, ax

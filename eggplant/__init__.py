@@ -7,3 +7,4 @@ from . import plot as pl
 from . import methods as fun
 from . import ode
 from . import constants as C
+from . import de

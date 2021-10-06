@@ -7,10 +7,11 @@ from numba import njit
 from typing import Union, Optional, List, Tuple, TypeVar, Callable
 
 T = TypeVar("T")
+S = TypeVar("T")
 
 
 def pd_to_np(x: Union[pd.DataFrame, np.ndarray]) -> np.ndarray:
-    if isinstance(x, pd.DataFrame):
+    if isinstance(x, (pd.DataFrame, pd.Series)):
         return x.values
     else:
         return x
@@ -180,3 +181,58 @@ def max_min_transforms(
         return x * (mx - mn) + mn
 
     return forward, reverse
+
+
+def subsample(
+    obj: T,
+    keep: Optional[float] = None,
+    axis=0,
+    return_index: bool = False,
+) -> T:
+
+    if keep == 1 or keep is None:
+        if return_index:
+            return obj, np.arange(len(obj))
+        else:
+            return obj
+
+    elif keep < 1:
+        idx = np.random.choice(
+            len(obj),
+            replace=False,
+            size=int(len(obj) * keep),
+        )
+    elif keep > 1:
+        idx = np.random.choice(
+            len(obj),
+            replace=False,
+            size=int(keep),
+        )
+
+    if isinstance(obj, ad.AnnData):
+        out = _anndata_take(obj, idx, axis)
+    elif isinstance(obj, np.ndarray):
+        out = obj.take(idx, axis=axis)
+    else:
+        raise NotImplementedError(
+            "subsampling not supported for type : {} yet".format(type(obj))
+        )
+    if return_index:
+        return out, idx
+    return out
+
+
+def _anndata_take(adata: ad.AnnData, idx: np.ndarray, axis=0) -> ad.AnnData:
+    if axis == 0:
+        return adata[idx, :]
+    else:
+        return adata[:, idx]
+
+
+def normalize(x: np.ndarray, total_counts=1e4) -> np.ndarray:
+    sm = x.sum()
+    nx = x / sm * total_counts
+    nx = np.log1p(nx)
+    mu = nx.mean()
+    std = nx.std()
+    return (nx - mu) / std

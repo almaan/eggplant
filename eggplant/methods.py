@@ -9,6 +9,7 @@ from scipy.spatial.distance import cdist
 import torch as t
 import tqdm
 from typing_extensions import Literal
+from kneed import KneeLocator
 
 from . import models as m
 from . import utils as ut
@@ -38,6 +39,7 @@ def fit(
     learning_rate: float = 0.01,
     verbose: bool = False,
     seed: int = 0,
+    progress_message: str = None,
     **kwargs,
 ) -> None:
     """fit GP Model
@@ -58,7 +60,8 @@ def fit(
     :type verbose: bool = False,
     :param seed: random seed, defaults to 0
     :type seed: int
-
+    :param progress_message: message to include in progress bar
+    :type progress: str
     """
 
     t.manual_seed(seed)
@@ -74,6 +77,8 @@ def fit(
 
     if verbose:
         epoch_iterator = tqdm.tqdm(range(n_epochs))
+        if progress_message:
+            epoch_iterator.set_description(progress_message)
     else:
         epoch_iterator = range(n_epochs)
 
@@ -118,6 +123,7 @@ def transfer_to_reference(
     return_models: bool = False,
     return_losses: bool = True,
     max_cg_iterations: int = 1000,
+    meta_key: str = "meta",
     **kwargs,
 ) -> Dict[str, Union[List["m.GPModel"], List[np.ndarray]]]:
     """transfer observed data to a reference
@@ -151,6 +157,8 @@ def transfer_to_reference(
      more accurate solves – instead, lower the CG tolerance
      (from GPyTorch documentation), defaults to 1000.
     :type max_cg_iterations: int = 1000,
+    :param meta_key: key in uns slot that holds additional meta info
+    :type meta_key: str
     """
 
     if not isinstance(adatas, (list, dict)):
@@ -213,6 +221,9 @@ def transfer_to_reference(
                 feature=feature,
             )
 
+            # if meta_key in _adata.uns.keys():
+            # meta_info.update(_adata.uns[meta_key])
+
             reference.transfer(
                 model,
                 names=full_name,
@@ -251,8 +262,68 @@ def estimate_n_lanmdarks(
     spatial_key: str = "spatial",
     max_cg_iterations: int = 1000,
     tail_length: int = 50,
+    estimate_knee_point: bool = True,
     seed: int = 1,
-) -> Tuple[np.ndarray, Union[Dict[str, List[float]], List[float]]]:
+    kneedle_s_param: float = 1,
+) -> Tuple[
+    np.ndarray,
+    Union[Dict[str, List[float]], List[float]],
+    Optional[Union[List[float], Dict[str, float]]],
+]:
+    """Estimate the influence of landmark number on result
+
+    :param adatas: Single AnnData file or list or dictionary with
+     AnnDatas to be analyzed.
+    :type adatas: Union[ad.AnnData, List[ad.AnnData], Dict[str, ad.AnnData]]
+    :param n_max_lmks: max number of landmarks to include in the
+     analysis.
+    :type n_max_lmks: Union[float, int] = 50
+    :param n_evals: number of evaluations. The number of lansmarks
+     tested will be equally spaced in the interval [1,n_max_lmks],
+     defaults to 10.
+    :type n_evals: int
+    :param layer: which layer to use
+    :type layer: Optional[str]
+    :param device: which device to perform computations on,
+     defaults to "cpu"
+    :type device: Literal["cpu", "gpu"]
+    :param n_epochs: number of epochs to use when learning the
+     relationship between landmark distance and feature values,
+     defaults to 1000.
+    :type n_epochs: int
+    :param learning rate: learning rate to use in optimization,
+     defaults to 0.01.
+    :type learning_rate: float
+    :param subsample: whether to subsample the data or not. If a
+     value less than 1 is given, then it's interpreted as a fraction
+     of the total number of observations, if larger than zero as absolute
+     number of observations to keep. If exactly 1 or None,
+     no subsampling will occur. Note, landmarks are selected before subsampling.
+     Defaults to None.
+    :type subsample: Optional[Union[float, int]]
+    :param verbose: set to True to use verbose mode, defaults to False.
+    :type verbose: bool
+    :param spatial_key: key to use to extract spatial
+     coordinates from the obsm attribute. Defaults to "spatial".
+    :type spatial_key: str
+    :param max_cg_iterations: The maximum number of conjugate gradient iterations to
+     perform (when computing matrix solves). A higher value rarely results in
+     more accurate solves – instead, lower the CG tolerance
+     (from GPyTorch documentation), defaults to 1000.
+    :type max_cg_iterations: int
+    :param tail_length: the last tail_length observations will
+     be used to compute an average MLL value. If n_epochs are less than
+    tail_length, all epochs will be used instead. Defaults to 50.
+    :type tail_length: int
+    :param seed: value of random seed, defaults to 1.
+    :type seed: int
+
+    :return: A tuple with a vector listing the number of landmarks
+     used in each evaluation as first element and as second the
+     corresponding average MLL values.
+    :rtype: Tuple[np.ndarray, Union[Dict[str, List[float]], List[float]]]
+
+    """
 
     if not isinstance(adatas, (list, dict)):
         adatas = [adatas]
@@ -264,6 +335,8 @@ def estimate_n_lanmdarks(
         names = None
 
     likelihoods = OrderedDict() if names is not None else []
+    if estimate_knee_point:
+        kneepoints = OrderedDict() if names is not None else []
 
     n_adatas = len(adatas)
     msg = "[Processing] :: Sample : {} ({}/{})"
@@ -313,21 +386,37 @@ def estimate_n_lanmdarks(
                 device=device,
             )
 
+            fit_msg = "Eval. {} lmks :".format(n_lmk)
             with gp.settings.max_cg_iterations(max_cg_iterations):
                 fit(
                     model,
                     n_epochs=n_epochs,
                     learning_rate=learning_rate,
                     verbose=verbose,
+                    progress_message=fit_msg,
                 )
 
             final_ll = model.loss_history
             final_ll = np.mean(np.array(final_ll)[-tail_length::])
             sample_likelihoods[w] = final_ll
 
+        if estimate_knee_point:
+            kneedle = KneeLocator(
+                n_lmks,
+                sample_likelihoods,
+                direction="decreasing",
+                curve="convex",
+                S=kneedle_s_param,
+            )
+            kneedle = kneedle.knee
+
         if names is None:
             likelihoods.append(sample_likelihoods)
+            if estimate_knee_point:
+                kneepoints.append(kneedle)
         else:
             likelihoods[names[k]] = sample_likelihoods
+            if estimate_knee_point:
+                kneepoints[names[k]] = kneedle
 
-    return (n_lmks, likelihoods)
+    return (n_lmks, likelihoods, (kneepoints if estimate_knee_point else None))

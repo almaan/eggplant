@@ -13,6 +13,7 @@ from typing import Optional, List, Union, Dict
 from typing_extensions import Literal
 
 from . import utils as ut
+from . import de
 
 
 class GPModel(gp.models.ExactGP):
@@ -178,7 +179,7 @@ class Reference:
         self.n_models = 0
 
         self._add_obs_meta(meta)
-        self._models = OrderedDict()
+        self._models = dict(mean=OrderedDict(), var=OrderedDict())
         self._obs_meta = None
         self._var_meta = OrderedDict()
         self.adata = ad.AnnData()
@@ -238,20 +239,22 @@ class Reference:
 
     def _add_model(
         self,
-        feature: np.ndarray,
+        mean_feature: np.ndarray,
+        var_feature: np.ndarray,
         name: Optional[str] = None,
         meta: Optional[Dict[str, Union[str, float, int]]] = None,
     ) -> None:
         """add result from model"""
 
         assert (
-            len(feature) == self.S
+            len(mean_feature) == self.S
         ), "Dimension mismatch between new transfer and existing data"
 
         if name is None:
             name = "Transfer_{}".format(self.n_models)
 
-        self._models[name] = feature
+        self._models["mean"][name] = mean_feature
+        self._models["var"][name] = var_feature
         self._var_meta[name] = meta if meta is not None else {}
         self.n_models += 1
 
@@ -261,7 +264,7 @@ class Reference:
         """clean reference from transferred data"""
         self.n_models = 0
         self._adata_stage_compile = -1
-        self._models = OrderedDict()
+        self._models = dict(mean=OrderedDict(), var=OrderedDict())
         self._var_meta = OrderedDict()
         self.adata = ad.AnnData()
 
@@ -294,11 +297,14 @@ class Reference:
 
             with t.no_grad():
                 out = m(self.ldists[:, pos].to(m.device))
-                pred = out.mean.cpu().detach().numpy()
+                mean_pred = out.mean.cpu().detach().numpy()
+                var_pred = out.variance.cpu().detach().numpy()
+
             m = m.cpu()
             name = names[k] if names is not None else f"Transfer_{k}"
             self._add_model(
-                pred,
+                mean_pred,
+                var_pred,
                 name,
                 meta,
             )
@@ -310,16 +316,17 @@ class Reference:
         force_build: bool = False,
     ):
         """helper function to build AnnData object"""
-        if self.adata_stage_compile != self.n_models\
-           or force_build:
-            df = pd.DataFrame(self._models)
+        if self.adata_stage_compile != self.n_models or force_build:
+            mean_df = pd.DataFrame(self._models["mean"])
+            var_df = pd.DataFrame(self._models["var"])
             var = pd.DataFrame(self._var_meta).T
             spatial = self.domain.detach().numpy()
             self.adata = ad.AnnData(
-                df,
+                mean_df,
                 var=var,
                 obs=self._obs_meta,
             )
+            self.adata.layers["var"] = var_df
             self.adata.obsm["spatial"] = spatial
             self.adata_stage_compile = self.n_models
 
@@ -370,12 +377,14 @@ class Reference:
         for fv in uni_feature_vals:
             name = "average_{}".format(fv)
             sel_idx = self.adata.var[by].values == fv
-            mean_vals = self.adata.X[:, sel_idx].mean(axis=1)
-            self._models[name] = mean_vals.flatten()
-            self._var_meta[name] = {by : fv}
+
+            mean_vals, mean_vars = de.mixed_normal(
+                self.adata.X[:, sel_idx], self.adata.layers["var"][:, sel_idx]
+            )
+
+            self._models["mean"][name] = mean_vals.flatten()
+            self._var_meta[name] = {by: fv}
             if by != "average":
                 self._var_meta[name]["model"] = "average"
 
-        self._build_adata(force_build = True)
-
-
+        self._build_adata(force_build=True)
