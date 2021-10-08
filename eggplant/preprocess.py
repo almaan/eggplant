@@ -383,6 +383,7 @@ def spatial_smoothing(
     if spatial_key not in adata.obsm.keys():
         raise Exception("Spatial key not present in AnnData object")
 
+    # TODO: n_neigh -> n_neighs in new squidpy
     if distance_key not in adata.obsp.keys():
         sq.gr.spatial_neighbors(
             adata,

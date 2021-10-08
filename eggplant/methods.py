@@ -221,8 +221,8 @@ def transfer_to_reference(
                 feature=feature,
             )
 
-            # if meta_key in _adata.uns.keys():
-            # meta_info.update(_adata.uns[meta_key])
+            if meta_key in _adata.uns.keys():
+                meta_info.update(_adata.uns[meta_key])
 
             reference.transfer(
                 model,

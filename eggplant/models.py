@@ -180,7 +180,6 @@ class Reference:
 
         self._add_obs_meta(meta)
         self._models = dict(mean=OrderedDict(), var=OrderedDict())
-        self._obs_meta = None
         self._var_meta = OrderedDict()
         self.adata = ad.AnnData()
         self.adata_stage_compile = -1
@@ -236,6 +235,8 @@ class Reference:
                 raise ValueError(
                     "Meta with format : {} is not supported".format(type(meta))
                 )
+        else:
+            self._obs_meta = None
 
     def _add_model(
         self,
@@ -383,6 +384,8 @@ class Reference:
             )
 
             self._models["mean"][name] = mean_vals.flatten()
+            self._models["var"][name] = mean_vars.flatten()
+
             self._var_meta[name] = {by: fv}
             if by != "average":
                 self._var_meta[name]["model"] = "average"

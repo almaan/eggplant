@@ -7,6 +7,7 @@ from . import constants as C
 
 import matplotlib.pyplot as plt
 from typing import Union, Optional, Dict, List, Tuple, Any, TypeVar
+from typing_extensions import Literal
 
 
 T = TypeVar("T")
@@ -164,6 +165,7 @@ def _visualize(
             else:
                 _title = names[k]
 
+            _title = _title.replace("average_", "average ")
             ax[k].set_title(
                 _title,
                 fontsize=fontsize,
@@ -709,19 +711,21 @@ def landmark_diagnostics(
 def visualize_dge(
     ref: "m.GPModel",
     dge_res: Dict[str, np.ndarray],
-    cmap: str = "RdBu",
+    cmap: str = "RdBu_r",
     n_cols: int = 4,
     marker_size: float = 10,
     side_size=8,
     title_fontsize=20,
     colorbar_fontsize=20,
+    colorbar_orientation: Literal["horizontal", "vertical"] = "horizontal",
+    no_sig_color: str = "lightgray",
 ) -> Tuple[plt.Figure, plt.Axes]:
 
     n_comps = len(dge_res)
     if cmap in plt.colormaps():
         cmap = eval("plt.cm." + cmap)
     else:
-        cmap = plt.cm.RdBu
+        cmap = plt.cm.RdBu_r
 
     n_rows, n_cols = ut.get_figure_dims(n_total=n_comps, n_cols=n_cols)
     crd = ref.adata.obsm["spatial"]
@@ -736,7 +740,7 @@ def visualize_dge(
         ax[k].scatter(
             crd[~is_sig, 0],
             crd[~is_sig, 1],
-            c="lightgray",
+            c=no_sig_color,
             s=marker_size,
         )
 
@@ -753,16 +757,28 @@ def visualize_dge(
         ax[k].set_title(title, fontsize=title_fontsize)
 
         ax[k].set_aspect("equal")
-        cbar = fig.colorbar(_sc, ax=ax[k])
+        ax[k].invert_yaxis()
+        cbar = fig.colorbar(_sc, ax=ax[k], orientation=colorbar_orientation)
         cbar.ax.tick_params(labelsize=colorbar_fontsize)
 
-        o_lbl = cbar.ax.get_yticks()
+        o_lbl = cbar.get_ticks()
+
+        if len(o_lbl) < 3:
+            o_lbl = np.linespace(o_lbl[0], o_lbl[-1], 3).round(2)
+            cbar.set_ticks(o_lbl)
+
+        if colorbar_orientation[0] == "h":
+            val_sep = "\n"
+        else:
+            val_sep = " "
+
         n_lbl = (
-            [str(o_lbl[0]) + f" ({neg_name})"]
+            [str(o_lbl[0]) + val_sep + f"({neg_name})"]
             + [f"{x:0.2f}" for x in o_lbl[1:-1]]
-            + [str(o_lbl[-1]) + f" ({pos_name})"]
+            + [str(o_lbl[-1]) + val_sep + f"({pos_name})"]
         )
-        cbar.ax.set_yticklabels(n_lbl)
+        cbar.set_ticks(o_lbl)
+        cbar.set_ticklabels(n_lbl)
 
     for axx in ax:
         axx.axis("off")

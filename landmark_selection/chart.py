@@ -88,7 +88,6 @@ class MainWindow(QMainWindow):
         self.adata, self.im, self.scalefactor = read_data(self.path)
 
         self.im_w, self.im_h = self.im.size
-        print(self.im_w, self.im_h)
 
         self.margin = 100
         self.box_space = 150
@@ -155,7 +154,7 @@ class MainWindow(QMainWindow):
         undo_button = QPushButton("UNDO", self)
         undo_button.setGeometry(
             self.w / 2 - undo_button_w - button_margin / 2,
-            self.im_h + 50,
+            self.im_h + self.margin * 2,
             undo_button_w,
             undo_button_h,
         )
@@ -165,14 +164,17 @@ class MainWindow(QMainWindow):
         save_button_w = 60
         save_button = QPushButton("SAVE", self)
         save_button.setGeometry(
-            self.w / 2 + button_margin / 2, self.im_h + 50, save_button_w, save_button_h
+            self.w / 2 + button_margin / 2,
+            self.im_h + self.margin * 2,
+            save_button_w,
+            save_button_h,
         )
 
         save_button.clicked.connect(self.savepoints)
 
         if self.adata is None:
 
-            tf_y = self.im_h + 50 + undo_button_h + 5
+            tf_y = self.im_h + self.margin * 2 + undo_button_h + 5
 
             s_tf_h = 30
             s_tf_w = 200
