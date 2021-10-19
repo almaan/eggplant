@@ -139,7 +139,11 @@ if __name__ == "__main__":
     )
     aa(
         "--full_width",
+<<<<<<< HEAD
         type=int,
+=======
+        type=float,
+>>>>>>> b2a5fae5b3cfde5e300cda76db5f585e701d4dfe
         default=1000,
     )
 
