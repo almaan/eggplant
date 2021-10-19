@@ -165,7 +165,7 @@ def _visualize(
             else:
                 _title = names[k]
 
-            _title = _title.replace("average_", "average ")
+            _title = _title.replace("composite_", "Composite Profile: ")
             ax[k].set_title(
                 _title,
                 fontsize=fontsize,
@@ -719,6 +719,7 @@ def visualize_dge(
     colorbar_fontsize=20,
     colorbar_orientation: Literal["horizontal", "vertical"] = "horizontal",
     no_sig_color: str = "lightgray",
+    reorder_axes: Optional[List[int]] = None,
 ) -> Tuple[plt.Figure, plt.Axes]:
 
     n_comps = len(dge_res)
@@ -734,7 +735,16 @@ def visualize_dge(
 
     ax = ax.flatten()
 
-    for k, (comp, vals) in enumerate(dge_res.items()):
+    if reorder_axes is not None:
+        try:
+            dge_res_keys = list(dge_res.keys())
+            dge_res_keys = [dge_res_keys[k] for k in reorder_axes]
+            _dge_res = {k: dge_res[k] for k in dge_res_keys}
+        except:
+            print("[ERROR] : Could not order axes according to specification.")
+            _dge_res = dge_res
+
+    for k, (comp, vals) in enumerate(_dge_res.items()):
         is_sig = vals["sig"]
 
         ax[k].scatter(

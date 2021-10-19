@@ -347,8 +347,8 @@ class Reference:
 
         if models is None:
             models = self.adata.var.index
-        elif isinstance(models, str) and models == "average":
-            self.adata.obs["average"] = self.adata.X.mean(axis=1)
+        elif isinstance(models, str) and models == "composite":
+            self.adata.obs["composite"] = self.adata.X.mean(axis=1)
         else:
             if not isinstance(models, list):
                 models = [models]
@@ -359,13 +359,13 @@ class Reference:
             *args,
             **kwargs,
         )
-        if isinstance(models, str) and models == "average":
-            self.adata.obs = self.adata.obs.drop(["average"], axis=1)
+        if isinstance(models, str) and models == "composite":
+            self.adata.obs = self.adata.obs.drop(["composite"], axis=1)
 
-    def average_representation(self, by: str = "feature"):
-        """produce average representation
+    def composite_representation(self, by: str = "feature"):
+        """produce composite representation
 
-        :param by: average representation with respect to this meta data feature
+        :param by: consensus representation with respect to this meta data feature
         :type by: str, default to "feature"
         """
 
@@ -376,7 +376,7 @@ class Reference:
 
         uni_feature_vals = np.unique(self.adata.var[by].values)
         for fv in uni_feature_vals:
-            name = "average_{}".format(fv)
+            name = "composite_{}".format(fv)
             sel_idx = self.adata.var[by].values == fv
 
             mean_vals, mean_vars = de.mixed_normal(
@@ -387,7 +387,7 @@ class Reference:
             self._models["var"][name] = mean_vars.flatten()
 
             self._var_meta[name] = {by: fv}
-            if by != "average":
-                self._var_meta[name]["model"] = "average"
+            if by != "composite":
+                self._var_meta[name]["model"] = "composite"
 
         self._build_adata(force_build=True)

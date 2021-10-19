@@ -363,7 +363,7 @@ def estimate_n_lanmdarks(
         )
         landmark_distances = landmark_distances[idx, :]
 
-        sample_likelihoods = np.zeros(len(n_lmks))
+        sample_trace = np.zeros(len(n_lmks))
 
         if verbose:
             print(
@@ -398,12 +398,12 @@ def estimate_n_lanmdarks(
 
             final_ll = model.loss_history
             final_ll = np.mean(np.array(final_ll)[-tail_length::])
-            sample_likelihoods[w] = final_ll
+            sample_trace[w] = final_ll
 
         if estimate_knee_point:
             kneedle = KneeLocator(
                 n_lmks,
-                sample_likelihoods,
+                sample_trace,
                 direction="decreasing",
                 curve="convex",
                 S=kneedle_s_param,
@@ -411,11 +411,11 @@ def estimate_n_lanmdarks(
             kneedle = kneedle.knee
 
         if names is None:
-            likelihoods.append(sample_likelihoods)
+            likelihoods.append(sample_trace)
             if estimate_knee_point:
                 kneepoints.append(kneedle)
         else:
-            likelihoods[names[k]] = sample_likelihoods
+            likelihoods[names[k]] = sample_trace
             if estimate_knee_point:
                 kneepoints[names[k]] = kneedle
 
