@@ -366,7 +366,7 @@ def estimate_n_lanmdarks(
         crd = (crd - crd.min()) / crd_min_max
 
         spread_distance /= crd_min_max
-        sampler = PoissonDiscSampler(crd, r=spread_distance)
+        sampler = PoissonDiscSampler(crd, min_dist=spread_distance)
         lmks = sampler.sample()
         if len(lmks) < n_lmks[-1]:
             raise Exception(
@@ -532,7 +532,7 @@ class PoissonDiscSampler:
     def sample(
         self,
         max_points: Optional[int] = None,
-        k: Optional[int] = 10,
+        k: Optional[int] = 4,
     ) -> np.ndarray:
 
         if max_points is None:
