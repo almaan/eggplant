@@ -3,6 +3,7 @@ import anndata as ad
 
 from . import models as m
 from . import utils as ut
+from . import methods as fun
 from . import constants as C
 
 import matplotlib.pyplot as plt
@@ -792,5 +793,35 @@ def visualize_dge(
 
     for axx in ax:
         axx.axis("off")
+
+    return fig, ax
+
+
+def visualize_landmark_spread(
+    adata: ad.AnnData,
+    spread_distance: Optional[float] = None,
+    center_to_center_multiplier: Optional[float] = None,
+    side_size: float = 5,
+    marker_size: float = 20,
+) -> Tuple[plt.Figure, plt.Axes]:
+
+    if spread_distance is None:
+        center_to_center_dist = ut.get_center_to_center_distance(adata)
+        if center_to_center_dist:
+            spread_distance = center_to_center_dist * center_to_center_multiplier
+        else:
+            raise NotImplementedError
+
+    crd = adata.obsm["spatial"]
+    sampler = fun.PoissonDiscSampler(crd=crd.copy(), min_dist=spread_distance)
+    points = sampler.sample()
+
+    fig, ax = plt.subplots(1, 1, figsize=(side_size, side_size))
+
+    ax.scatter(crd[:, 0], crd[:, 1], s=marker_size, c="black")
+    ax.scatter(points[:, 0], points[:, 1], s=marker_size * 1.5, c="red", marker="*")
+
+    ax.set_aspect("equal")
+    ax.axis("off")
 
     return fig, ax
