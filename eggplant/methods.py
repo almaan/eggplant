@@ -15,6 +15,7 @@ from . import models as m
 from . import utils as ut
 
 from collections import OrderedDict
+from itertools import product
 
 
 def _optimizer_to(optimizer, device):
@@ -265,6 +266,8 @@ def estimate_n_lanmdarks(
     estimate_knee_point: bool = True,
     seed: int = 1,
     kneedle_s_param: float = 1,
+    spread_distance: Optional[float] = None,
+    center_to_center_multiplier: float = 10,
 ) -> Tuple[
     np.ndarray,
     Union[Dict[str, List[float]], List[float]],
@@ -349,17 +352,42 @@ def estimate_n_lanmdarks(
     np.random.seed(seed)
 
     for k, _adata in enumerate(adatas):
+        if spread_distance is None:
+            center_to_center_dist = ut.get_center_to_center_distance(_adata)
+            if center_to_center_dist:
+                spread_distance = center_to_center_dist * center_to_center_multiplier
+            else:
+                raise NotImplementedError
 
         model_name = names[k] if names is not None else None
 
         crd = _adata.obsm[spatial_key]
-        crd = (crd - crd.min()) / (crd.max() - crd.min())
-        lmks = crd[np.random.choice(len(crd), n_lmks[-1], replace=False), :]
+        crd_min_max = crd.max() - crd.min()
+        crd = (crd - crd.min()) / crd_min_max
+
+        spread_distance /= crd_min_max
+        sampler = PoissonDiscSampler(crd, r=spread_distance)
+        lmks = sampler.sample()
+        if len(lmks) < n_lmks[-1]:
+            raise Exception(
+                "To few landmarks, try adjusting landmark distance or multiplier"
+            )
+
+        keep_lmks = np.random.choice(
+            np.arange(1, len(lmks)), n_lmks[-1] - 1, replace=False
+        )
+        lmks = lmks[np.append([0], keep_lmks), :]
+
+        # lmks = crd[np.random.choice(len(crd), n_lmks[-1], replace=False), :]
+
         landmark_distances = cdist(crd, lmks)
         feature_values = np.asarray(_adata.X.sum(axis=1)).flatten()
         feature_values = ut.normalize(feature_values)
         feature_values, idx = ut.subsample(
-            feature_values, keep=subsample, return_index=True
+            feature_values,
+            keep=subsample,
+            return_index=True,
+            seed=seed,
         )
         landmark_distances = landmark_distances[idx, :]
 
@@ -420,3 +448,139 @@ def estimate_n_lanmdarks(
                 kneepoints[names[k]] = kneedle
 
     return (n_lmks, likelihoods, (kneepoints if estimate_knee_point else None))
+
+
+class PoissonDiscSampler:
+    def __init__(
+        self,
+        crd: np.ndarray,
+        min_dist: float,
+    ) -> None:
+
+        self.r = min_dist
+        self.r2 = self.r ** 2
+        self.delta = self.r / np.sqrt(2)
+
+        self._set_grid(crd)
+        self._reset()
+
+    def _set_grid(self, crd: np.ndarray) -> None:
+        self.center = crd.mean(axis=0)
+        self.x_correct = crd[:, 0].min()
+        self.y_correct = crd[:, 1].min()
+        crd[:, 0] -= self.x_correct
+        crd[:, 1] -= self.y_correct
+        self.x_max = crd[:, 0].max()
+        self.y_max = crd[:, 1].max()
+
+        self.n_x = int(crd[:, 0].max() / self.delta)
+        self.n_y = int(crd[:, 1].max() / self.delta)
+
+    def _reset(
+        self,
+    ) -> None:
+        self.cells = {x: -1 for x in product(range(self.n_x + 1), range(self.n_y + 1))}
+        self.active = [0]
+        self.samples = [self.center]
+        pos = self.coord_to_cell(self.center)
+        self.cells[pos] = 0
+
+    def coord_to_cell(
+        self,
+        point: Union[np.ndarray, Tuple[float, float]],
+    ) -> Tuple[int, int]:
+        _x = int(point[0] // self.delta)
+        _y = int(point[1] // self.delta)
+        return (_x, _y)
+
+    def add_k_in_annulus(
+        self,
+        point: Union[np.ndarray, Tuple[float, float]],
+        k: int = 5,
+    ) -> np.ndarray:
+        xy = []
+        while len(xy) < k:
+            _r = np.random.uniform(self.r, 2 * self.r)
+            _theta = np.random.uniform(0, 2 * np.pi)
+            _x = _r * np.cos(_theta)
+            _y = _r * np.sin(_theta)
+            tmp = point + (_x, _y)
+            if (tmp[0] > 0 and tmp[0] < self.x_max) and (
+                tmp[1] > 0 and tmp[1] < self.y_max
+            ):
+
+                xy.append(tmp)
+
+        return np.array(xy)
+
+    def get_neighbors(
+        self,
+        idx: Tuple[int, int],
+    ) -> List[Tuple[int, int]]:
+        res = []
+        for px in range(-2, 3):
+            for py in range(-2, 3):
+                new_x = idx[0] + px
+                new_y = idx[1] + py
+                if (new_x >= 0 and new_x <= self.n_x) and (
+                    new_y >= 0 and new_y <= self.n_y
+                ):
+                    res.append((new_x, new_y))
+
+        return res
+
+    def sample(
+        self,
+        max_points: Optional[int] = None,
+        k: Optional[int] = 10,
+    ) -> np.ndarray:
+
+        if max_points is None:
+            max_points = np.inf
+        elif max_points > len(self.cells):
+            print("[WARNING] : You specified more points than the domain allows")
+
+        while len(self.samples) < max_points and len(self.active) > 0:
+
+            idx = np.random.choice(self.active)
+            point = self.samples[idx]
+            new_points = self.add_k_in_annulus(point, k=k)
+            inactivate = True
+            for new_point in new_points:
+
+                new_point_cell = self.coord_to_cell(new_point)
+                nbrs = self.get_neighbors(new_point_cell)
+
+                discard_point = False
+
+                for nbr in nbrs:
+                    if self.cells[nbr] != -1:
+                        nbr_crd = self.samples[self.cells[nbr]]
+                        dist = (nbr_crd[0] - new_point[0]) ** 2
+                        dist += (nbr_crd[1] - new_point[1]) ** 2
+                        in_dist = dist < self.r2
+
+                        if in_dist:
+                            discard_point = True
+                            break
+
+                if not discard_point:
+                    self.samples.append(new_point)
+                    self.cells[new_point_cell] = len(self.samples) - 1
+                    self.active.append(len(self.samples) - 1)
+                    inactivate = False
+                    break
+
+            if inactivate:
+                self.active.remove(idx)
+
+        points = np.array(self.samples)
+        points[:, 0] += self.x_correct
+        points[:, 1] += self.y_correct
+
+        shuf_idx = np.arange(1, points.shape[0])
+        np.random.shuffle(shuf_idx)
+        shuf_idx = np.append([0], shuf_idx)
+
+        self._reset()
+        return points[shuf_idx, :]

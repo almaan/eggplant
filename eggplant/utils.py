@@ -188,7 +188,10 @@ def subsample(
     keep: Optional[float] = None,
     axis=0,
     return_index: bool = False,
+    seed: int = 1,
 ) -> T:
+
+    np.random.seed(seed)
 
     if keep == 1 or keep is None:
         if return_index:
@@ -236,3 +239,18 @@ def normalize(x: np.ndarray, total_counts=1e4) -> np.ndarray:
     mu = nx.mean()
     std = nx.std()
     return (nx - mu) / std
+
+
+def get_center_to_center_distance(
+    adata: ad.AnnData,
+) -> Union[float, bool]:
+    try:
+        spatial_key = list(adata.uns["spatial"])[0]
+        spot_diameter = (
+            adata.uns["spatial"][spatial_key]["scalefactors"]["spot_diameter_fullres"]
+            / 55
+            * 100
+        )
+    except:
+        spot_diameter = False
+    return spot_diameter
