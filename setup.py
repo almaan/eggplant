@@ -31,9 +31,6 @@ setuptools.setup(
         "gpytorch>=1.4.2",
         "squidpy>=1.0.0",
         "morphops>=0.1.12",
-<<<<<<< HEAD
         "kneed>=0.7.0",
-=======
->>>>>>> b2a5fae5b3cfde5e300cda76db5f585e701d4dfe
     ],
 )
