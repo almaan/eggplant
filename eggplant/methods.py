@@ -252,7 +252,8 @@ def transfer_to_reference(
 
 def estimate_n_lanmdarks(
     adatas: Union[ad.AnnData, List[ad.AnnData], Dict[str, ad.AnnData]],
-    n_max_lmks: Union[float, int] = 50,
+    n_max_lmks: Union[int] = 50,
+    n_min_lmks: Optional[int] = 1,
     n_evals: int = 10,
     feature: Optional[str] = None,
     layer: Optional[str] = None,
@@ -345,7 +346,7 @@ def estimate_n_lanmdarks(
     n_adatas = len(adatas)
     msg = "[Processing] :: Sample : {} ({}/{})"
 
-    n_lmks = np.floor(np.linspace(1, n_max_lmks, n_evals)).astype(int)
+    n_lmks = np.floor(np.linspace(n_min_lmks, n_max_lmks, n_evals)).astype(int)
     n_lmks = np.unique(n_lmks)
 
     tail_length = min(tail_length, n_epochs)
