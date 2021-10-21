@@ -799,6 +799,8 @@ def visualize_dge(
 
 def visualize_landmark_spread(
     adata: ad.AnnData,
+    feature: Optional[str] = None,
+    layer: Optional[str] = None,
     spread_distance: Optional[float] = None,
     center_to_center_multiplier: Optional[float] = None,
     side_size: float = 5,
@@ -829,7 +831,13 @@ def visualize_landmark_spread(
 
     fig, ax = plt.subplots(1, 1, figsize=(side_size, side_size))
 
-    ax.scatter(crd[:, 0], crd[:, 1], s=marker_size, c="black")
+    if feature is not None:
+        get_feature = ut._get_feature(adata, feature, layer)
+        feature_values = get_feature(adata)
+    else:
+        feature_values = np.asarray(adata.X.sum(axis=1)).flatten()
+
+    ax.scatter(crd[:, 0], crd[:, 1], s=marker_size, c=feature_values)
     if landmark_marker_size is None:
         landmark_marker_size = marker_size * 2
     ax.scatter(points[:, 0], points[:, 1], s=landmark_marker_size, c="red", marker="*")
@@ -855,6 +863,7 @@ def visualize_landmark_spread(
             points[ii, 1],
             str(ii),
             fontsize=label_fontsize,
+            bbox=bbox_style,
         )
 
     ax.set_title(
