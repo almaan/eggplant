@@ -356,17 +356,20 @@ def estimate_n_lanmdarks(
             center_to_center_dist = ut.get_center_to_center_distance(_adata)
             if center_to_center_dist:
                 spread_distance = center_to_center_dist * center_to_center_multiplier
-            else:
-                raise NotImplementedError
+            raise NotImplementedError(
+                "center to center distance access is not yet"
+                " implemented for the data type."
+                " Specify spread_distance instead."
+            )
 
         model_name = names[k] if names is not None else None
 
-        crd = _adata.obsm[spatial_key]
+        crd = _adata.obsm[spatial_key].copy()
         crd_min_max = crd.max() - crd.min()
         crd = (crd - crd.min()) / crd_min_max
 
         spread_distance /= crd_min_max
-        sampler = PoissonDiscSampler(crd, min_dist=spread_distance)
+        sampler = PoissonDiscSampler(crd, min_dist=spread_distance, seed=seed)
         lmks = sampler.sample()
         if len(lmks) < n_lmks[-1]:
             raise Exception(
@@ -455,7 +458,10 @@ class PoissonDiscSampler:
         self,
         crd: np.ndarray,
         min_dist: float,
+        seed: int = 1,
     ) -> None:
+
+        self.seed = seed
 
         self.r = min_dist
         self.r2 = self.r ** 2
@@ -464,10 +470,11 @@ class PoissonDiscSampler:
         self._set_grid(crd)
         self._reset()
 
-    def _set_grid(self, crd: np.ndarray) -> None:
+    def _set_grid(self, _crd: np.ndarray) -> None:
+        crd = _crd.copy()
         self.center = crd.mean(axis=0)
-        self.x_correct = crd[:, 0].min()
-        self.y_correct = crd[:, 1].min()
+        self.x_correct = _crd[:, 0].min()
+        self.y_correct = _crd[:, 1].min()
         crd[:, 0] -= self.x_correct
         crd[:, 1] -= self.y_correct
         self.x_max = crd[:, 0].max()
@@ -534,6 +541,8 @@ class PoissonDiscSampler:
         max_points: Optional[int] = None,
         k: Optional[int] = 4,
     ) -> np.ndarray:
+
+        np.random.seed(self.seed)
 
         if max_points is None:
             max_points = np.inf
