@@ -254,6 +254,7 @@ def estimate_n_lanmdarks(
     adatas: Union[ad.AnnData, List[ad.AnnData], Dict[str, ad.AnnData]],
     n_max_lmks: Union[float, int] = 50,
     n_evals: int = 10,
+    feature: Optional[str] = None,
     layer: Optional[str] = None,
     device: Literal["cpu", "gpu"] = "cpu",
     n_epochs: int = 1000,
@@ -363,6 +364,12 @@ def estimate_n_lanmdarks(
                     " Specify spread_distance instead."
                 )
 
+        if feature is not None:
+            get_feature = ut._get_feature(_adata, feature, layer)
+            feature_values = get_feature(_adata)
+        else:
+            feature_values = np.asarray(_adata.X.sum(axis=1)).flatten()
+
         model_name = names[k] if names is not None else None
 
         crd = _adata.obsm[spatial_key].copy()
@@ -385,7 +392,6 @@ def estimate_n_lanmdarks(
         # lmks = crd[np.random.choice(len(crd), n_lmks[-1], replace=False), :]
 
         landmark_distances = cdist(crd, lmks)
-        feature_values = np.asarray(_adata.X.sum(axis=1)).flatten()
         feature_values = ut.normalize(feature_values)
         feature_values, idx = ut.subsample(
             feature_values,
