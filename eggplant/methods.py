@@ -479,13 +479,13 @@ class PoissonDiscSampler:
 
     def _set_grid(self, _crd: np.ndarray) -> None:
         crd = _crd.copy()
-        self.center = crd.mean(axis=0)
         self.x_correct = _crd[:, 0].min()
         self.y_correct = _crd[:, 1].min()
         crd[:, 0] -= self.x_correct
         crd[:, 1] -= self.y_correct
         self.x_max = crd[:, 0].max()
         self.y_max = crd[:, 1].max()
+        self.center = crd.mean(axis=0)
 
         self.n_x = int(crd[:, 0].max() / self.delta)
         self.n_y = int(crd[:, 1].max() / self.delta)
