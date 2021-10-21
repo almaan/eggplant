@@ -803,6 +803,12 @@ def visualize_landmark_spread(
     center_to_center_multiplier: Optional[float] = None,
     side_size: float = 5,
     marker_size: float = 20,
+    landmark_marker_size: Optional[float] = None,
+    label_fontsize: float = 10,
+    title_fontsize: float = 20,
+    seed: int = 1,
+    text_h_offset: Optional[float] = None,
+    bbox_style: Optional[Dict[str, Any]] = None,
 ) -> Tuple[plt.Figure, plt.Axes]:
 
     if spread_distance is None:
@@ -810,18 +816,49 @@ def visualize_landmark_spread(
         if center_to_center_dist:
             spread_distance = center_to_center_dist * center_to_center_multiplier
         else:
-            raise NotImplementedError
+            raise NotImplementedError(
+                "center to center distance access is not yet"
+                " implemented for the data type."
+                " Specify spread_distance instead."
+            )
 
     crd = adata.obsm["spatial"]
     sampler = fun.PoissonDiscSampler(crd=crd.copy(), min_dist=spread_distance)
     points = sampler.sample()
+    n_points = points.shape[0]
 
     fig, ax = plt.subplots(1, 1, figsize=(side_size, side_size))
 
     ax.scatter(crd[:, 0], crd[:, 1], s=marker_size, c="black")
-    ax.scatter(points[:, 0], points[:, 1], s=marker_size * 1.5, c="red", marker="*")
+    if landmark_marker_size is None:
+        landmark_marker_size = marker_size * 2
+    ax.scatter(points[:, 0], points[:, 1], s=landmark_marker_size, c="red", marker="*")
 
     ax.set_aspect("equal")
     ax.axis("off")
+    ax.invert_yaxis()
+
+    if text_h_offset is None:
+        text_h_offset = spread_distance / 5
+
+    if bbox_style is None:
+        bbox_style = dict(
+            boxstyle="square",
+            edgecolor="black",
+            facecolor="gray",
+            alpha=0.8,
+        )
+
+    for ii in range(n_points):
+        ax.text(
+            points[ii, 0] + text_h_offset,
+            points[ii, 1],
+            str(ii),
+            fontsize=label_fontsize,
+        )
+
+    ax.set_title(
+        "Landmark Spread\n#Landmarks: {}".format(n_points), fontsize=title_fontsize
+    )
 
     return fig, ax
