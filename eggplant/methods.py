@@ -356,11 +356,12 @@ def estimate_n_lanmdarks(
             center_to_center_dist = ut.get_center_to_center_distance(_adata)
             if center_to_center_dist:
                 spread_distance = center_to_center_dist * center_to_center_multiplier
-            raise NotImplementedError(
-                "center to center distance access is not yet"
-                " implemented for the data type."
-                " Specify spread_distance instead."
-            )
+            else:
+                raise NotImplementedError(
+                    "center to center distance access is not yet"
+                    " implemented for the data type."
+                    " Specify spread_distance instead."
+                )
 
         model_name = names[k] if names is not None else None
 
