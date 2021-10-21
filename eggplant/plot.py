@@ -837,10 +837,17 @@ def visualize_landmark_spread(
     else:
         feature_values = np.asarray(adata.X.sum(axis=1)).flatten()
 
-    ax.scatter(crd[:, 0], crd[:, 1], s=marker_size, c=feature_values)
+    ax.scatter(crd[:, 0], crd[:, 1], s=marker_size, c=ut.normalize(feature_values))
     if landmark_marker_size is None:
         landmark_marker_size = marker_size * 2
-    ax.scatter(points[:, 0], points[:, 1], s=landmark_marker_size, c="red", marker="*")
+    ax.scatter(
+        points[:, 0],
+        points[:, 1],
+        s=landmark_marker_size,
+        c="red",
+        marker="*",
+        edgecolor="black",
+    )
 
     ax.set_aspect("equal")
     ax.axis("off")
@@ -853,7 +860,7 @@ def visualize_landmark_spread(
         bbox_style = dict(
             boxstyle="square",
             edgecolor="black",
-            facecolor="gray",
+            facecolor="lightgray",
             alpha=0.8,
         )
 
