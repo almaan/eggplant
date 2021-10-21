@@ -587,24 +587,28 @@ class ColorMapper:
         n_elements: bool = False,
     ) -> Union[str, np.ndarray]:
 
-        if hasattr(x, "__len__") or n_elements:
-            uni = set(x)
-            has_keys = all([k in self.cdict.keys() for k in uni])
+        if n_elements:
+            n = n_elements
+            clr = [self.numeric_cdict[ii % self.n_c] for ii in range(n)]
 
-            if has_keys:
-                clr = np.array([self.cdict[c] for c in x])
-            else:
-                if n_elements:
-                    n = x
+        elif hasattr(x, "__len__"):
+            if isinstance(x, (tuple, list)):
+                uni = set(x)
+                has_keys = all([k in self.cdict.keys() for k in uni])
+                if has_keys:
+                    clr = [self.cdict[ii] for ii in x]
                 else:
-                    n = len(x)
-                    clr = [self.numeric_cdict[ii % self.n_c] for ii in range(n)]
-                    clr = np.array(clr)
+                    raise ValueError("Keys not supported")
+            else:
+                n = len(x)
+                clr = [self.numeric_cdict[ii % self.n_c] for ii in range(n)]
+                clr = np.array(clr)
         else:
             if x in self.cdict.keys():
                 clr = self.cdict[x]
             else:
                 raise ValueError(f"{x} is not supported as value.")
+
         return clr
 
 
