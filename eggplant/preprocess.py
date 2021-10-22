@@ -1,4 +1,5 @@
 import anndata as ad
+import scanpy as sc
 import squidpy as sq
 from squidpy._constants._constants import CoordType
 
@@ -420,3 +421,18 @@ def spatial_smoothing(
         new_X = sp_type(new_X)
 
     adata.layers["smoothed"] = new_X
+
+
+def default_normalization(
+    adata: ad.AnnData,
+    min_cells: float = 0.1,
+    total_counts: float = 1e4,
+    exclude_highly_expressed: bool = False,
+) -> None:
+
+    sc.pp.filter_genes(adata, min_cells=min_cells)
+    sc.pp.normalize_total(
+        adata, total_counts, exclude_highly_expressed=exclude_highly_expressed
+    )
+    sc.pp.log1p(adata)
+    sc.pp.scale(adata)

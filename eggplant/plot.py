@@ -850,11 +850,13 @@ def visualize_landmark_spread(
         if same_lib:
             libsize = None
 
+        feature_values = ut.normalize(feature_values, libsize=libsize)
+
     ax.scatter(
         crd[:, 0],
         crd[:, 1],
         s=marker_size,
-        c=ut.normalize(feature_values, libsize=libsize),
+        c=feature_values,
     )
     if landmark_marker_size is None:
         landmark_marker_size = marker_size * 2
