@@ -233,9 +233,13 @@ def _anndata_take(adata: ad.AnnData, idx: np.ndarray, axis=0) -> ad.AnnData:
         return adata[:, idx]
 
 
-def normalize(x: np.ndarray, total_counts=1e4) -> np.ndarray:
-    sm = x.sum()
-    nx = x / sm * total_counts
+def normalize(
+    x: np.ndarray, libsize: Optional[np.ndarray], total_counts: float = 1e4
+) -> np.ndarray:
+    if libsize is not None:
+        if not isinstance(libsize, np.ndarray):
+            libsize = np.array(libsize).flatten()
+        nx = x / libsize * total_counts
     nx = np.log1p(nx)
     mu = nx.mean()
     std = nx.std()
@@ -273,7 +277,7 @@ def seq(x: int, n: int, divisor: int = 3):
 
     while y[-1] < n:
         y.append(y[-1] + ceil(y[-2] / divisor))
-    if y[-1] >= n:
+    if y[-1] > n:
         y.pop(-1)
 
     return y
