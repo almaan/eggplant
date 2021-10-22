@@ -446,6 +446,11 @@ def estimate_n_lanmdarks(
 
             sample_trace[w] = final_ll / n_reps
 
+        if names is None:
+            likelihoods.append(sample_trace)
+        else:
+            likelihoods[names[k]] = sample_trace
+
             # model.eval()
             # with t.no_grad():
             #     out = model(ut._to_tensor(sub_landmark_distances))
