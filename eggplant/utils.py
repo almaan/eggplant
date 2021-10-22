@@ -254,3 +254,14 @@ def get_center_to_center_distance(
     except:
         spot_diameter = False
     return spot_diameter
+
+
+def rmse(
+    x: np.ndarray,
+    y: np.ndarray,
+) -> float:
+
+    _x = x.flatten()
+    _y = y.flatten()
+
+    return np.mean((_x - _y) ** 2)
