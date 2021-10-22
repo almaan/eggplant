@@ -234,7 +234,7 @@ def _anndata_take(adata: ad.AnnData, idx: np.ndarray, axis=0) -> ad.AnnData:
 
 
 def normalize(
-    x: np.ndarray, libsize: Optional[np.ndarray], total_counts: float = 1e4
+    x: np.ndarray, libsize: Optional[np.ndarray] = None, total_counts: float = 1e4
 ) -> np.ndarray:
     if libsize is not None:
         if not isinstance(libsize, np.ndarray):

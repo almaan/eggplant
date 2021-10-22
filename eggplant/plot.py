@@ -843,7 +843,13 @@ def visualize_landmark_spread(
     else:
         feature_values = np.asarray(adata.X.sum(axis=1)).flatten()
 
-    ax.scatter(crd[:, 0], crd[:, 1], s=marker_size, c=ut.normalize(feature_values))
+    libsize = adata.X.sum(axis=1)
+    ax.scatter(
+        crd[:, 0],
+        crd[:, 1],
+        s=marker_size,
+        c=ut.normalize(feature_values, libsize=libsize),
+    )
     if landmark_marker_size is None:
         landmark_marker_size = marker_size * 2
     ax.scatter(
