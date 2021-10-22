@@ -388,39 +388,39 @@ def estimate_n_lanmdarks(
                 "To few landmarks, try adjusting landmark distance or multiplier"
             )
 
-        for rep in range(n_reps):
-            final_ll = 0
-            keep_lmks = np.random.choice(
-                np.arange(1, len(lmks)), n_lmks[-1] - 1, replace=False
+        final_ll = 0
+        keep_lmks = np.random.choice(
+            np.arange(1, len(lmks)), n_lmks[-1] - 1, replace=False
+        )
+        lmks = lmks[np.append([0], keep_lmks), :]
+
+        # lmks = crd[np.random.choice(len(crd), n_lmks[-1], replace=False), :]
+
+        landmark_distances = cdist(crd, lmks)
+
+        feature_values, idx = ut.subsample(
+            feature_values,
+            keep=subsample,
+            return_index=True,
+            seed=seed,
+        )
+        landmark_distances = landmark_distances[idx, :]
+
+        sample_trace = np.zeros(len(n_lmks))
+
+        if verbose:
+            print(
+                msg.format(model_name, k + 1, n_adatas),
+                flush=True,
             )
-            lmks = lmks[np.append([0], keep_lmks), :]
 
-            # lmks = crd[np.random.choice(len(crd), n_lmks[-1], replace=False), :]
+            # TODO: fix tqdm
+            lmk_iterator = enumerate(n_lmks)
+        else:
+            lmk_iterator = enumerate(n_lmks)
 
-            landmark_distances = cdist(crd, lmks)
-
-            feature_values, idx = ut.subsample(
-                feature_values,
-                keep=subsample,
-                return_index=True,
-                seed=seed,
-            )
-            landmark_distances = landmark_distances[idx, :]
-
-            sample_trace = np.zeros(len(n_lmks))
-
-            if verbose:
-                print(
-                    msg.format(model_name, k + 1, n_adatas),
-                    flush=True,
-                )
-
-                # TODO: fix tqdm
-                lmk_iterator = enumerate(n_lmks)
-            else:
-                lmk_iterator = enumerate(n_lmks)
-
-            for w, n_lmk in lmk_iterator:
+        for w, n_lmk in lmk_iterator:
+            for rep in range(n_reps):
                 pick_lmks = np.random.choice(
                     landmark_distances.shape[1], size=n_lmk, replace=False
                 )
@@ -444,8 +444,9 @@ def estimate_n_lanmdarks(
                     )
 
                 rep_final_ll = model.loss_history
-                rep_final_ll = np.mean(np.array(final_ll)[-tail_length::])
-                final_ll += rep_final_ll / n_reps
+                rep_final_ll = np.mean(np.array(rep_final_ll)[-tail_length::])
+
+                final_ll += rep_final_ll
 
             sample_trace[w] = final_ll / n_reps
 
