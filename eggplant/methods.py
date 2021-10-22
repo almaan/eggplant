@@ -388,7 +388,6 @@ def estimate_n_lanmdarks(
                 "To few landmarks, try adjusting landmark distance or multiplier"
             )
 
-        final_ll = 0
         keep_lmks = np.random.choice(
             np.arange(1, len(lmks)), n_lmks[-1] - 1, replace=False
         )
@@ -420,6 +419,7 @@ def estimate_n_lanmdarks(
             lmk_iterator = enumerate(n_lmks)
 
         for w, n_lmk in lmk_iterator:
+            final_ll = 0
             for rep in range(n_reps):
                 pick_lmks = np.random.choice(
                     landmark_distances.shape[1], size=n_lmk, replace=False
