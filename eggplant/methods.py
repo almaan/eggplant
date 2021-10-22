@@ -435,9 +435,16 @@ def estimate_n_lanmdarks(
                     progress_message=fit_msg,
                 )
 
-            final_ll = model.loss_history
-            final_ll = np.mean(np.array(final_ll)[-tail_length::])
-            sample_trace[w] = final_ll
+            # final_ll = model.loss_history
+            # final_ll = np.mean(np.array(final_ll)[-tail_length::])
+
+            model.eval()
+            with t.no_grad():
+                out = model(ut._to_tensor(sub_landmark_distances).to(model.device))
+                mean_pred = out.mean.cpu().detach().numpy()
+
+            rmse_loss = ut.rmse(mean_pred, feature_values)
+            sample_trace[w] = rmse_loss
 
         if estimate_knee_point:
             kneedle = KneeLocator(

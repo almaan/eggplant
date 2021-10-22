@@ -588,7 +588,7 @@ class ColorMapper:
     ) -> Union[str, np.ndarray]:
 
         if n_elements:
-            n = n_elements
+            n = x
             clr = [self.numeric_cdict[ii % self.n_c] for ii in range(n)]
 
         elif hasattr(x, "__len__"):
