@@ -394,7 +394,8 @@ def estimate_n_lanmdarks(
         # lmks = crd[np.random.choice(len(crd), n_lmks[-1], replace=False), :]
 
         landmark_distances = cdist(crd, lmks)
-        feature_values = ut.normalize(feature_values)
+        libsize = _adata.X.sum(axis=1)
+        feature_values = ut.normalize(feature_values, libsize=libsize)
         feature_values, idx = ut.subsample(
             feature_values,
             keep=subsample,
@@ -603,12 +604,9 @@ class PoissonDiscSampler:
         points[:, 0] += self.x_correct
         points[:, 1] += self.y_correct
 
-        # shuf_idx = np.arange(1, points.shape[0])
-        # np.random.shuffle(shuf_idx)
-        # shuf_idx = np.append([0], shuf_idx)
-        new_order = np.argsort((points[0, :] - points) ** 2)
-        points = points[new_order, :]
-        print(points)
+        shuf_idx = np.arange(1, points.shape[0])
+        np.random.shuffle(shuf_idx)
+        shuf_idx = np.append([0], shuf_idx)
 
         self._reset()
-        return points
+        return points[shuf_idx, :]
