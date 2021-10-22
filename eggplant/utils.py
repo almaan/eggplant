@@ -240,6 +240,9 @@ def normalize(
         if not isinstance(libsize, np.ndarray):
             libsize = np.array(libsize).flatten()
         nx = x / libsize * total_counts
+    else:
+        nx = x / x.sum() * total_counts
+
     nx = np.log1p(nx)
     mu = nx.mean()
     std = nx.std()
