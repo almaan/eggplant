@@ -267,6 +267,7 @@ def estimate_n_lanmdarks(
     tail_length: int = 50,
     estimate_knee_point: bool = True,
     seed: int = 1,
+    normalize: bool = True,
     kneedle_s_param: float = 1,
     spread_distance: Optional[float] = None,
     center_to_center_multiplier: float = 10,
@@ -394,8 +395,14 @@ def estimate_n_lanmdarks(
         # lmks = crd[np.random.choice(len(crd), n_lmks[-1], replace=False), :]
 
         landmark_distances = cdist(crd, lmks)
-        libsize = _adata.X.sum(axis=1)
-        feature_values = ut.normalize(feature_values, libsize=libsize)
+
+        if normalize:
+            libsize = _adata.X.sum(axis=1)
+            same_lib = np.all(np.abs(libsize - libsize[0]) < 1e-2)
+            if same_lib:
+                libsize = None
+            feature_values = ut.normalize(feature_values, libsize=libsize)
+
         feature_values, idx = ut.subsample(
             feature_values,
             keep=subsample,
@@ -437,16 +444,17 @@ def estimate_n_lanmdarks(
                     progress_message=fit_msg,
                 )
 
-            # final_ll = model.loss_history
-            # final_ll = np.mean(np.array(final_ll)[-tail_length::])
+            final_ll = model.loss_history
+            final_ll = np.mean(np.array(final_ll)[-tail_length::])
+            sample_trace[w] = final_ll
 
-            model.eval()
-            with t.no_grad():
-                out = model(ut._to_tensor(sub_landmark_distances))
-                mean_pred = out.mean.cpu().detach().numpy()
+            # model.eval()
+            # with t.no_grad():
+            #     out = model(ut._to_tensor(sub_landmark_distances))
+            #     mean_pred = out.mean.cpu().detach().numpy()
 
-            rmse_loss = ut.rmse(mean_pred, feature_values)
-            sample_trace[w] = rmse_loss
+            # rmse_loss = ut.rmse(mean_pred, feature_values)
+            # sample_trace[w] = rmse_loss
 
         if estimate_knee_point:
             kneedle = KneeLocator(

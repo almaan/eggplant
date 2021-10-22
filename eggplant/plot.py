@@ -813,6 +813,7 @@ def visualize_landmark_spread(
     label_fontsize: float = 10,
     title_fontsize: float = 20,
     seed: int = 1,
+    normalize: bool = True,
     text_h_offset: Optional[float] = None,
     bbox_style: Optional[Dict[str, Any]] = None,
 ) -> Tuple[plt.Figure, plt.Axes]:
@@ -843,7 +844,12 @@ def visualize_landmark_spread(
     else:
         feature_values = np.asarray(adata.X.sum(axis=1)).flatten()
 
-    libsize = adata.X.sum(axis=1)
+    if normalize:
+        libsize = adata.X.sum(axis=1)
+        same_lib = np.all(np.abs(libsize - libsize[0]) < 1e-2)
+        if same_lib:
+            libsize = None
+
     ax.scatter(
         crd[:, 0],
         crd[:, 1],
