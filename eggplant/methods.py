@@ -266,9 +266,7 @@ def estimate_n_lanmdarks(
     spatial_key: str = "spatial",
     max_cg_iterations: int = 1000,
     tail_length: int = 50,
-    estimate_knee_point: bool = True,
     seed: int = 1,
-    kneedle_s_param: float = 1,
     spread_distance: Optional[float] = None,
     center_to_center_multiplier: float = 10,
 ) -> Tuple[
@@ -341,8 +339,6 @@ def estimate_n_lanmdarks(
         names = None
 
     likelihoods = OrderedDict() if names is not None else []
-    if estimate_knee_point:
-        kneepoints = OrderedDict() if names is not None else []
 
     n_adatas = len(adatas)
     msg = "[Processing] :: Sample : {} ({}/{})"
@@ -458,26 +454,33 @@ def estimate_n_lanmdarks(
             # rmse_loss = ut.rmse(mean_pred, feature_values)
             # sample_trace[w] = rmse_loss
 
-        if estimate_knee_point:
-            kneedle = KneeLocator(
-                n_lmks,
-                sample_trace,
-                direction="decreasing",
-                curve="convex",
-                S=kneedle_s_param,
-            )
-            kneedle = kneedle.knee
+    return (n_lmks, likelihoods)
 
-        if names is None:
-            likelihoods.append(sample_trace)
-            if estimate_knee_point:
-                kneepoints.append(kneedle)
-        else:
-            likelihoods[names[k]] = sample_trace
-            if estimate_knee_point:
-                kneepoints[names[k]] = kneedle
 
-    return (n_lmks, likelihoods, (kneepoints if estimate_knee_point else None))
+def landmark_lower_bound(
+    xs: np.ndarray,
+    ys: Union[List[np.ndarray], np.ndarray, Dict[str, np.ndarray]],
+    kneedle_s_param: float = 1,
+) -> float:
+    def find_knee(y):
+        kneedle = KneeLocator(
+            xs,
+            y,
+            direction="decreasing",
+            curve="convex",
+            S=kneedle_s_param,
+        )
+
+        return kneedle.knee
+
+    if isinstance(ys, list):
+        knees = [find_knee(y) for y in ys]
+    elif isinstance(ys, dict):
+        knees = {n: find_knee(y) for n, y in ys.items()}
+    elif isinstance(ys, np.ndarray):
+        knees = [find_knee(ys)]
+
+    return knees
 
 
 class PoissonDiscSampler:

@@ -613,13 +613,10 @@ class ColorMapper:
 
 
 def landmark_diagnostics(
-    lmk_eval_res: Tuple[
-        List[List[float]],
-        Union[List[float], Dict[str, float]],
-        Optional[Union[List[float], Dict[str, float]]],
-    ],
+    lmk_eval_res: Tuple[List[List[float]], Union[List[float], Dict[str, float]]],
     side_size: Optional[Union[Tuple[float, float], float]] = None,
     title_fontsize: float = 20,
+    lower_bound: Optional[float] = None,
     line_style_dict: Optional[Dict[str, Any]] = None,
     label_style_dict: Optional[Dict[str, Any]] = None,
     ticks_style_dict: Optional[Dict[str, Any]] = None,
@@ -632,10 +629,6 @@ def landmark_diagnostics(
     if isinstance(lmk_eval_res[1], dict):
         lls = list(lmk_eval_res[1].values())
         names = list(lmk_eval_res[1].keys())
-        if lmk_eval_res[2] is not None:
-            knees = list(lmk_eval_res[2].values())
-        else:
-            knees = [None]
     else:
         lls = lmk_eval_res[1]
         names = [f"Sample : {k}" for k in range(n_samples)]
@@ -670,6 +663,9 @@ def landmark_diagnostics(
     if label_style_dict is not None:
         _label_style_dict.update(label_style_dict)
 
+    if lower_bound is None:
+        lower_bound = [None for _ in range(n_samples)]
+
     fig, ax = plt.subplots(n_samples, 1, figsize=figsize, squeeze=False)
     ax = ax.flatten()
 
@@ -695,14 +691,14 @@ def landmark_diagnostics(
 
         axx.set_title(names[k], fontsize=title_fontsize)
 
-        if knees[k] is not None:
+        if lower_bound[k] is not None:
             axx.axvline(
-                x=knees[k],
+                x=lower_bound[k],
                 color="black",
                 linestyle="dashed",
             )
             axx.axvspan(
-                xmin=knees[k],
+                xmin=lower_bound[k],
                 xmax=lmk_eval_res[0][-1],
                 alpha=0.3,
                 color="blue",
