@@ -255,6 +255,7 @@ def estimate_n_lanmdarks(
     n_max_lmks: Union[int] = 50,
     n_min_lmks: Optional[int] = 1,
     n_evals: int = 10,
+    n_reps: int = 3,
     feature: Optional[str] = None,
     layer: Optional[str] = None,
     device: Literal["cpu", "gpu"] = "cpu",
@@ -387,59 +388,66 @@ def estimate_n_lanmdarks(
                 "To few landmarks, try adjusting landmark distance or multiplier"
             )
 
-        keep_lmks = np.random.choice(
-            np.arange(1, len(lmks)), n_lmks[-1] - 1, replace=False
-        )
-        lmks = lmks[np.append([0], keep_lmks), :]
-
-        # lmks = crd[np.random.choice(len(crd), n_lmks[-1], replace=False), :]
-
-        landmark_distances = cdist(crd, lmks)
-
-        feature_values, idx = ut.subsample(
-            feature_values,
-            keep=subsample,
-            return_index=True,
-            seed=seed,
-        )
-        landmark_distances = landmark_distances[idx, :]
-
-        sample_trace = np.zeros(len(n_lmks))
-
-        if verbose:
-            print(
-                msg.format(model_name, k + 1, n_adatas),
-                flush=True,
+        for rep in range(n_reps):
+            final_ll = 0
+            keep_lmks = np.random.choice(
+                np.arange(1, len(lmks)), n_lmks[-1] - 1, replace=False
             )
+            lmks = lmks[np.append([0], keep_lmks), :]
 
-            # TODO: fix tqdm
-            lmk_iterator = enumerate(n_lmks)
-        else:
-            lmk_iterator = enumerate(n_lmks)
+            # lmks = crd[np.random.choice(len(crd), n_lmks[-1], replace=False), :]
 
-        for w, n_lmk in lmk_iterator:
+            landmark_distances = cdist(crd, lmks)
 
-            sub_landmark_distances = landmark_distances[:, 0:n_lmk]
-            t.manual_seed(seed)
-            model = m.GPModel(
-                ut._to_tensor(sub_landmark_distances),
-                ut._to_tensor(feature_values),
-                device=device,
+            feature_values, idx = ut.subsample(
+                feature_values,
+                keep=subsample,
+                return_index=True,
+                seed=seed,
             )
+            landmark_distances = landmark_distances[idx, :]
 
-            fit_msg = "Eval. {} lmks :".format(n_lmk)
-            with gp.settings.max_cg_iterations(max_cg_iterations):
-                fit(
-                    model,
-                    n_epochs=n_epochs,
-                    learning_rate=learning_rate,
-                    verbose=verbose,
-                    progress_message=fit_msg,
+            sample_trace = np.zeros(len(n_lmks))
+
+            if verbose:
+                print(
+                    msg.format(model_name, k + 1, n_adatas),
+                    flush=True,
                 )
 
-            final_ll = model.loss_history
-            final_ll = np.mean(np.array(final_ll)[-tail_length::])
-            sample_trace[w] = final_ll
+                # TODO: fix tqdm
+                lmk_iterator = enumerate(n_lmks)
+            else:
+                lmk_iterator = enumerate(n_lmks)
+
+            for w, n_lmk in lmk_iterator:
+                pick_lmks = np.random.choice(
+                    landmark_distances.shape[1], size=n_lmk, replace=False
+                )
+                # sub_landmark_distances = landmark_distances[:, 0:n_lmk]
+                sub_landmark_distances = landmark_distances[:, pick_lmks]
+                t.manual_seed(seed)
+                model = m.GPModel(
+                    ut._to_tensor(sub_landmark_distances),
+                    ut._to_tensor(feature_values),
+                    device=device,
+                )
+
+                fit_msg = "Eval: {} lmks | Rep: {}/{}".format(n_lmk, rep + 1, n_reps)
+                with gp.settings.max_cg_iterations(max_cg_iterations):
+                    fit(
+                        model,
+                        n_epochs=n_epochs,
+                        learning_rate=learning_rate,
+                        verbose=verbose,
+                        progress_message=fit_msg,
+                    )
+
+                rep_final_ll = model.loss_history
+                rep_final_ll = np.mean(np.array(final_ll)[-tail_length::])
+                final_ll += rep_final_ll / n_reps
+
+            sample_trace[w] = final_ll / n_reps
 
             # model.eval()
             # with t.no_grad():
