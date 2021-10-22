@@ -346,9 +346,9 @@ def estimate_n_lanmdarks(
     n_adatas = len(adatas)
     msg = "[Processing] :: Sample : {} ({}/{})"
 
-    # n_lmks = np.floor(np.linspace(n_min_lmks, n_max_lmks, n_evals)).astype(int)
-    # n_lmks = np.unique(n_lmks)
-    n_lmks = np.array(ut.seq(n_min_lmks, n_max_lmks, divisor=3))
+    n_lmks = np.floor(np.linspace(n_min_lmks, n_max_lmks, n_evals)).astype(int)
+    n_lmks = np.unique(n_lmks)
+    # n_lmks = np.array(ut.seq(n_min_lmks, n_max_lmks, divisor=3))
 
     tail_length = min(tail_length, n_epochs)
 
@@ -603,9 +603,11 @@ class PoissonDiscSampler:
         points[:, 0] += self.x_correct
         points[:, 1] += self.y_correct
 
-        shuf_idx = np.arange(1, points.shape[0])
-        np.random.shuffle(shuf_idx)
-        shuf_idx = np.append([0], shuf_idx)
+        # shuf_idx = np.arange(1, points.shape[0])
+        # np.random.shuffle(shuf_idx)
+        # shuf_idx = np.append([0], shuf_idx)
+        new_order = np.argsort((points[0] - points) ** 2)
+        points = points[new_order, :]
 
         self._reset()
-        return points[shuf_idx, :]
+        return points
