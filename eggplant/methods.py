@@ -346,8 +346,9 @@ def estimate_n_lanmdarks(
     n_adatas = len(adatas)
     msg = "[Processing] :: Sample : {} ({}/{})"
 
-    n_lmks = np.floor(np.linspace(n_min_lmks, n_max_lmks, n_evals)).astype(int)
-    n_lmks = np.unique(n_lmks)
+    # n_lmks = np.floor(np.linspace(n_min_lmks, n_max_lmks, n_evals)).astype(int)
+    # n_lmks = np.unique(n_lmks)
+    n_lmks = np.array(ut.seq(n_min_lmks, n_max_lmks, divisor=3))
 
     tail_length = min(tail_length, n_epochs)
 
@@ -440,7 +441,7 @@ def estimate_n_lanmdarks(
 
             model.eval()
             with t.no_grad():
-                out = model(ut._to_tensor(sub_landmark_distances).to(model.device))
+                out = model(ut._to_tensor(sub_landmark_distances))
                 mean_pred = out.mean.cpu().detach().numpy()
 
             rmse_loss = ut.rmse(mean_pred, feature_values)
