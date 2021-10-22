@@ -606,8 +606,9 @@ class PoissonDiscSampler:
         # shuf_idx = np.arange(1, points.shape[0])
         # np.random.shuffle(shuf_idx)
         # shuf_idx = np.append([0], shuf_idx)
-        new_order = np.argsort((points[0] - points) ** 2)
+        new_order = np.argsort((points[0, :] - points) ** 2)
         points = points[new_order, :]
+        print(points)
 
         self._reset()
         return points
