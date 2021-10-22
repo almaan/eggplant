@@ -829,7 +829,9 @@ def visualize_landmark_spread(
             )
 
     crd = adata.obsm["spatial"]
-    sampler = fun.PoissonDiscSampler(crd=crd.copy(), min_dist=spread_distance)
+    sampler = fun.PoissonDiscSampler(
+        crd=crd.copy(), min_dist=spread_distance, seed=seed
+    )
     points = sampler.sample()
     n_points = points.shape[0]
 

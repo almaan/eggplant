@@ -3,6 +3,7 @@ import numpy as np
 import anndata as ad
 import torch as t
 from numba import njit
+from math import ceil
 
 from typing import Union, Optional, List, Tuple, TypeVar, Callable
 
@@ -265,3 +266,14 @@ def rmse(
     _y = y.flatten()
 
     return np.mean((_x - _y) ** 2)
+
+
+def seq(x: int, n: int, divisor: int = 3):
+    y = [x, x + ceil(x / divisor)]
+
+    while y[-1] < n:
+        y.append(y[-1] + ceil(y[-2] / divisor))
+    if y[-1] >= n:
+        y.pop(-1)
+
+    return y
