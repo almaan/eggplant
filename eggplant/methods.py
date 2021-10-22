@@ -267,7 +267,6 @@ def estimate_n_lanmdarks(
     tail_length: int = 50,
     estimate_knee_point: bool = True,
     seed: int = 1,
-    normalize: bool = True,
     kneedle_s_param: float = 1,
     spread_distance: Optional[float] = None,
     center_to_center_multiplier: float = 10,
@@ -372,6 +371,7 @@ def estimate_n_lanmdarks(
             feature_values = get_feature(_adata)
         else:
             feature_values = np.asarray(_adata.X.sum(axis=1)).flatten()
+            feature_values = ut.normalize(feature_values)
 
         model_name = names[k] if names is not None else None
 
@@ -395,13 +395,6 @@ def estimate_n_lanmdarks(
         # lmks = crd[np.random.choice(len(crd), n_lmks[-1], replace=False), :]
 
         landmark_distances = cdist(crd, lmks)
-
-        if normalize:
-            libsize = _adata.X.sum(axis=1)
-            same_lib = np.all(np.abs(libsize - libsize[0]) < 1e-2)
-            if same_lib:
-                libsize = None
-            feature_values = ut.normalize(feature_values, libsize=libsize)
 
         feature_values, idx = ut.subsample(
             feature_values,
