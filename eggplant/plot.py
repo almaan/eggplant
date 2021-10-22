@@ -18,7 +18,7 @@ def _visualize(
     data: List[Union[np.ndarray, List[str]]],
     n_cols: Optional[int] = None,
     n_rows: Optional[int] = None,
-    marker_size: float = 25,
+    marker_size: Union[float, List[float]] = 25,
     show_landmarks: bool = True,
     landmark_marker_size: float = 500,
     side_size: float = 4,
@@ -108,6 +108,10 @@ def _visualize(
         n_cols,
     )
 
+    marker_size = ut.obj_to_list(marker_size)
+    if len(marker_size) == 1:
+        marker_size = marker_size * len(counts)
+
     figsize = (n_cols * side_size, n_rows * side_size)
 
     fig, ax = plt.subplots(n_rows, n_cols, figsize=figsize)
@@ -138,7 +142,7 @@ def _visualize(
             crds[k][:, 0],
             crds[k][:, 1],
             c=counts[k],
-            s=marker_size,
+            s=marker_size[k],
             vmin=vmin[k],
             vmax=vmax[k],
             **kwargs,
@@ -616,7 +620,7 @@ def landmark_diagnostics(
     lmk_eval_res: Tuple[List[List[float]], Union[List[float], Dict[str, float]]],
     side_size: Optional[Union[Tuple[float, float], float]] = None,
     title_fontsize: float = 20,
-    lower_bound: Optional[float] = None,
+    lower_bound: Optional[Dict[str, float], List[float]] = None,
     line_style_dict: Optional[Dict[str, Any]] = None,
     label_style_dict: Optional[Dict[str, Any]] = None,
     ticks_style_dict: Optional[Dict[str, Any]] = None,
@@ -665,6 +669,10 @@ def landmark_diagnostics(
 
     if lower_bound is None:
         lower_bound = [None for _ in range(n_samples)]
+    elif isinstance(lower_bound, (int, float)):
+        lower_bound = ut.obj_to_list(lower_bound)
+    elif isinstance(lower_bound, dict):
+        lower_bound = list(lower_bound.values())
 
     fig, ax = plt.subplots(n_samples, 1, figsize=figsize, squeeze=False)
     ax = ax.flatten()

@@ -182,8 +182,11 @@ def transfer_to_reference(
     n_total = n_features * n_adatas
     msg = "[Processing] ::  Model : {} | Feature : {} | Transfer : {}/{}"
 
+    if subsample is None:
+        subsample = [None for _ in len(adatas)]
+
     for k, _adata in enumerate(adatas):
-        adata = ut.subsample(_adata)
+        adata = ut.subsample(_adata, keep=subsample[k])
 
         model_name = names[k] if names is not None else f"Model_{k}"
 
