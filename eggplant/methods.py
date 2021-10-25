@@ -446,6 +446,7 @@ def estimate_n_lanmdarks(
                 rep_final_ll = np.mean(np.array(rep_final_ll)[-tail_length::])
 
                 del model
+                t.cuda.empty_cache()
 
                 final_ll += rep_final_ll
 
