@@ -138,10 +138,11 @@ def _visualize(
             vmax = [None] * len(counts)
 
     for k in range(len(counts)):
+        ordr = np.argsort(counts[k]).flatten()[::-1]
         _sc = ax[k].scatter(
-            crds[k][:, 0],
-            crds[k][:, 1],
-            c=counts[k],
+            crds[k][ordr, 0],
+            crds[k][ordr, 1],
+            c=counts[k][ordr],
             s=marker_size[adata_id[k]],
             vmin=vmin[k],
             vmax=vmax[k],
