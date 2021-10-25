@@ -94,7 +94,7 @@ def _visualize(
 
     """
 
-    counts, lmks, crds, names = data
+    counts, lmks, crds, names, adata_id = data
 
     if separate_colorbar:
         assert (
@@ -142,7 +142,7 @@ def _visualize(
             crds[k][:, 0],
             crds[k][:, 1],
             c=counts[k],
-            s=marker_size[k],
+            s=marker_size[adata_id[k]],
             vmin=vmin[k],
             vmax=vmax[k],
             **kwargs,
@@ -350,6 +350,7 @@ def visualize_transfer(
         data.append([v for _ in range(n_reps)])
 
     data.append(names)
+    data.append(np.arange(counts.shape[0]))
 
     return _visualize(data, **kwargs)
 
@@ -393,6 +394,7 @@ def visualize_observed(
 
         get_feature = [ut._get_feature(_adatas[0], feature) for feature in features]
     counts = [get_feature[k](a) for a in _adatas for k in range(n_features)]
+    adata_id = [k for k in len(_adatas) for _ in range(n_features)]
     lmks = [
         ut.pd_to_np(a.uns["curated_landmarks"])
         for a in _adatas
@@ -400,7 +402,7 @@ def visualize_observed(
     ]
     crds = [a.obsm["spatial"] for a in _adatas for k in range(n_features)]
 
-    data = [counts, lmks, crds, names]
+    data = [counts, lmks, crds, names, adata_id]
 
     return _visualize(data, **kwargs)
 
@@ -620,7 +622,7 @@ def landmark_diagnostics(
     lmk_eval_res: Tuple[List[List[float]], Union[List[float], Dict[str, float]]],
     side_size: Optional[Union[Tuple[float, float], float]] = None,
     title_fontsize: float = 20,
-    lower_bound: Optional[Dict[str, float], List[float]] = None,
+    lower_bound: Optional[Union[Dict[str, float], List[float]]] = None,
     line_style_dict: Optional[Dict[str, Any]] = None,
     label_style_dict: Optional[Dict[str, Any]] = None,
     ticks_style_dict: Optional[Dict[str, Any]] = None,
@@ -688,7 +690,7 @@ def landmark_diagnostics(
             **_label_style_dict,
         )
         axx.set_ylabel(
-            "MLL",
+            "nMLL",
             **_label_style_dict,
         )
         axx.set_xticks(lmk_eval_res[0])

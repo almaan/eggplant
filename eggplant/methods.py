@@ -445,6 +445,8 @@ def estimate_n_lanmdarks(
                 rep_final_ll = model.loss_history
                 rep_final_ll = np.mean(np.array(rep_final_ll)[-tail_length::])
 
+                del model
+
                 final_ll += rep_final_ll
 
             sample_trace[w] = final_ll / n_reps
