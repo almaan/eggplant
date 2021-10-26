@@ -241,7 +241,7 @@ def normalize(
             libsize = np.array(libsize).flatten()
         nx = x / libsize * total_counts
     else:
-        nx = x / x.sum() * total_counts
+        nx = x / x.max() * total_counts
 
     nx = np.log1p(nx)
     mu = nx.mean()

@@ -19,6 +19,7 @@ from itertools import product
 
 
 def _optimizer_to(optimizer, device):
+    """helper function to move optimizer"""
     for param in optimizer.state.values():
         if isinstance(param, t.Tensor):
             param.data = param.data.to(device)
@@ -353,7 +354,6 @@ def estimate_n_landmarks(
 
     n_lmks = np.floor(np.linspace(n_min_lmks, n_max_lmks, n_evals)).astype(int)
     n_lmks = np.unique(n_lmks)
-    # n_lmks = np.array(ut.seq(n_min_lmks, n_max_lmks, divisor=3))
 
     tail_length = min(tail_length, n_epochs)
 
@@ -474,13 +474,19 @@ def estimate_n_landmarks(
 
 
 def landmark_lower_bound(
-    xs: np.ndarray,
-    ys: Union[List[np.ndarray], np.ndarray, Dict[str, np.ndarray]],
+    n_lmks: np.ndarray,
+    losses: Union[List[np.ndarray], np.ndarray, Dict[str, np.ndarray]],
     kneedle_s_param: float = 1,
 ) -> float:
+    """automatic identification of lower bound
+
+    based on result from :func:`~eggplant.methods.estimate_n_landmarks`.
+
+    """
+
     def find_knee(y):
         kneedle = KneeLocator(
-            xs,
+            n_lmks,
             y,
             direction="decreasing",
             curve="convex",
@@ -489,12 +495,12 @@ def landmark_lower_bound(
 
         return kneedle.knee
 
-    if isinstance(ys, list):
-        knees = [find_knee(y) for y in ys]
-    elif isinstance(ys, dict):
-        knees = {n: find_knee(y) for n, y in ys.items()}
-    elif isinstance(ys, np.ndarray):
-        knees = [find_knee(ys)]
+    if isinstance(losses, list):
+        knees = [find_knee(y) for y in losses]
+    elif isinstance(losses, dict):
+        knees = {n: find_knee(y) for n, y in losses.items()}
+    elif isinstance(losses, np.ndarray):
+        knees = [find_knee(losses)]
 
     return knees
 

@@ -680,7 +680,7 @@ def landmark_diagnostics(
         lower_bound = list(lower_bound.values())
 
     _savgol_params = dict(
-        window_size=5,
+        window_length=5,
         polyorder=3,
     )
 
