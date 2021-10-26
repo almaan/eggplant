@@ -500,12 +500,32 @@ def landmark_lower_bound(
 
 
 class PoissonDiscSampler:
+    """Poisson Disc Sampler
+    Designed according to the principles
+    outlined in :cite:t:`pds` but for d=2.
+    """
+
     def __init__(
         self,
         crd: np.ndarray,
         min_dist: float,
         seed: int = 1,
     ) -> None:
+        """Constructor method
+
+        :param crd: coordinates of the data, a bounding box
+         (rectangular) will be created from these coordinates.
+         Samples will be contained within this bounding box.
+        :type crd: np.ndarray
+        :param min_dist: minimal allowed distance
+         between two samples, no two samples will be
+         closer than this value.
+        :type min_dist: float
+        :param seed: random seed (numpy)
+        :type seed: int
+
+
+        """
 
         self.seed = seed
 
@@ -516,7 +536,12 @@ class PoissonDiscSampler:
         self._set_grid(crd)
         self._reset()
 
-    def _set_grid(self, _crd: np.ndarray) -> None:
+    def _set_grid(
+        self,
+        _crd: np.ndarray,
+    ) -> None:
+
+        """build grid to guide neighbor search"""
         crd = _crd.copy()
         self.x_correct = _crd[:, 0].min()
         self.y_correct = _crd[:, 1].min()
@@ -532,6 +557,7 @@ class PoissonDiscSampler:
     def _reset(
         self,
     ) -> None:
+        """reset sampler"""
         self.cells = {x: -1 for x in product(range(self.n_x + 1), range(self.n_y + 1))}
         self.active = [0]
         self.samples = [self.center]
@@ -542,6 +568,17 @@ class PoissonDiscSampler:
         self,
         point: Union[np.ndarray, Tuple[float, float]],
     ) -> Tuple[int, int]:
+        """helper function, transforms coordinates
+         to cell id (in grid)
+
+        :param point: coordinates of point to get cell id for
+        :type point: Union[np.ndarray, Tuple[float, float]]
+
+        :return: a tuple (i,j) where i is the grid row index
+         and j is the column index.
+        :rtype: Tuple[int,int]
+
+        """
         _x = int(point[0] // self.delta)
         _y = int(point[1] // self.delta)
         return (_x, _y)

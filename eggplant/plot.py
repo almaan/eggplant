@@ -9,6 +9,7 @@ from . import constants as C
 import matplotlib.pyplot as plt
 from typing import Union, Optional, Dict, List, Tuple, Any, TypeVar
 from typing_extensions import Literal
+from scipy.signal import savgol_filter
 
 
 T = TypeVar("T")
@@ -628,6 +629,7 @@ def landmark_diagnostics(
     label_style_dict: Optional[Dict[str, Any]] = None,
     ticks_style_dict: Optional[Dict[str, Any]] = None,
     return_figure: bool = False,
+    savgol_params: Dict[str, Any] = None,
 ) -> Optional[Tuple[plt.Figure, plt.Axes]]:
 
     n_samples = len(lmk_eval_res[1])
@@ -677,17 +679,28 @@ def landmark_diagnostics(
     elif isinstance(lower_bound, dict):
         lower_bound = list(lower_bound.values())
 
+    _savgol_params = dict(
+        window_size=5,
+        polyorder=3,
+    )
+
+    if savgol_params is not None:
+        _savgol_params.update(savgol_params)
+
     fig, ax = plt.subplots(n_samples, 1, figsize=figsize, squeeze=False)
     ax = ax.flatten()
 
     for k, axx in enumerate(ax):
+        _x = lmk_eval_res[0]
+        _y = savgol_filter(lls[k], **_savgol_params)
+
         axx.plot(
-            lmk_eval_res[0],
-            lls[k],
+            _x,
+            _y,
             **_line_style_dict,
         )
         axx.set_xlabel(
-            "No. Landmarks",
+            "#Landmarks",
             **_label_style_dict,
         )
         axx.set_ylabel(
