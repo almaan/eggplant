@@ -395,7 +395,7 @@ def visualize_observed(
 
         get_feature = [ut._get_feature(_adatas[0], feature) for feature in features]
     counts = [get_feature[k](a) for a in _adatas for k in range(n_features)]
-    adata_id = [k for k in len(_adatas) for _ in range(n_features)]
+    adata_id = [k for k in range(len(_adatas)) for _ in range(n_features)]
     lmks = [
         ut.pd_to_np(a.uns["curated_landmarks"])
         for a in _adatas
@@ -813,7 +813,7 @@ def visualize_landmark_spread(
     feature: Optional[str] = None,
     layer: Optional[str] = None,
     spread_distance: Optional[float] = None,
-    center_to_center_multiplier: Optional[float] = None,
+    diameter_multiplier: Optional[float] = None,
     side_size: float = 5,
     marker_size: float = 20,
     landmark_marker_size: Optional[float] = None,
@@ -822,15 +822,65 @@ def visualize_landmark_spread(
     seed: int = 1,
     text_h_offset: Optional[float] = None,
     bbox_style: Optional[Dict[str, Any]] = None,
-) -> Tuple[plt.Figure, plt.Axes]:
+    return_figures: bool = False,
+) -> Optional[Tuple[plt.Figure, plt.Axes]]:
+    """function to visualize landmark distribution
+    with given set of parameters. Here Poisson Disc
+    Sampling (PSD) is used to randomly distribute the landmarks
+    within the spatial domain.
+
+    :param adata: data to visualize
+    :type adata: ad.AnnData
+    :param feature: feature to visualize,
+     if None then (normalized) sum across all features,
+     defaults to None
+    :type feature: Optional[str]
+    :param layer: layer to use for feature extraction, defaults to None
+    :type layer: Optional[str]
+    :param spread_distance: see
+     :py:paramref:`~eggplant.methods.estimate_n_landmarks.params.spread_distance`
+    :type spread_distance: Optional[float]
+    :param diameter_multiplier: see
+     :py:paramref:`~eggplant.methods.estimate_n_landmarks.diameter_multiplier`
+    :type diameter_multiplier: Optional[float]
+    :param side_size: side size of plot, defaults to 5
+    :type side_size: float
+    :param marker_size: marker size of spatial locations, defaults to 20
+    :type marker_size: float
+    :param landmark_marker_size: size of landmark indicators,
+     if None then twice that of
+     marker_size, defaults to None
+    :type landmark_marker_size: Optional[float]
+    :param label_fontsize: fontsize of landmark enumeration labels,
+     defaults to 10
+    :type label_fontsize: float
+    :param title_fontsize: fontsize of title, defaults to 20
+    :type title_fontsize: float
+    :param seed: random seed (numpy)
+    :type seed: int
+    :param text_h_offset: horizontal distance between
+     landmark enumeration label and landmark
+     marker, if None then `spread_distance / 5`, defaults to None
+    :type text_h_offset: Optional[float]
+    :param bbox_style: see `bbox` argument for :func:`matplotlib.pyplot.text`
+    :type bbox_style: Optional[Dict[str, Any]]
+    :param return_figures: return figure and axes objects, defaults to False
+    :type return_figures: bool
+
+    :return: Figure and Axes object if `return_figures=True`,
+     else plots the landmarks in the
+     spatial domain.
+    :rtype: Optional[Tuple[plt.Figure, plt.Axes]]
+
+    """
 
     if spread_distance is None:
-        center_to_center_dist = ut.get_center_to_center_distance(adata)
-        if center_to_center_dist:
-            spread_distance = center_to_center_dist * center_to_center_multiplier
+        diameter = ut.get_capture_location_diameter(adata)
+        if diameter:
+            spread_distance = diameter * diameter_multiplier
         else:
             raise NotImplementedError(
-                "center to center distance access is not yet"
+                "diameter access is not yet"
                 " implemented for the data type."
                 " Specify spread_distance instead."
             )
@@ -896,4 +946,7 @@ def visualize_landmark_spread(
         "Landmark Spread\n#Landmarks: {}".format(n_points), fontsize=title_fontsize
     )
 
-    return fig, ax
+    if return_figures:
+        return (fig, ax)
+    else:
+        plt.show()

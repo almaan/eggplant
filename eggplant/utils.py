@@ -249,16 +249,14 @@ def normalize(
     return (nx - mu) / std
 
 
-def get_center_to_center_distance(
+def get_capture_location_diameter(
     adata: ad.AnnData,
 ) -> Union[float, bool]:
     try:
         spatial_key = list(adata.uns["spatial"])[0]
-        spot_diameter = (
-            adata.uns["spatial"][spatial_key]["scalefactors"]["spot_diameter_fullres"]
-            / 55
-            * 100
-        )
+        spot_diameter = adata.uns["spatial"][spatial_key]["scalefactors"][
+            "spot_diameter_fullres"
+        ]
     except:
         spot_diameter = False
     return spot_diameter

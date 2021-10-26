@@ -183,7 +183,7 @@ def transfer_to_reference(
     msg = "[Processing] ::  Model : {} | Feature : {} | Transfer : {}/{}"
 
     if subsample is None:
-        subsample = [None for _ in len(adatas)]
+        subsample = [None for _ in range(len(adatas))]
 
     for k, _adata in enumerate(adatas):
         adata = ut.subsample(_adata, keep=subsample[k])
@@ -253,7 +253,7 @@ def transfer_to_reference(
     return return_object
 
 
-def estimate_n_lanmdarks(
+def estimate_n_landmarks(
     adatas: Union[ad.AnnData, List[ad.AnnData], Dict[str, ad.AnnData]],
     n_max_lmks: Union[int] = 50,
     n_min_lmks: Optional[int] = 1,
@@ -268,16 +268,16 @@ def estimate_n_lanmdarks(
     verbose: bool = False,
     spatial_key: str = "spatial",
     max_cg_iterations: int = 1000,
-    tail_length: int = 50,
+    tail_length: int = 200,
     seed: int = 1,
     spread_distance: Optional[float] = None,
-    center_to_center_multiplier: float = 10,
+    diameter_multiplier: float = 10,
 ) -> Tuple[
     np.ndarray,
     Union[Dict[str, List[float]], List[float]],
     Optional[Union[List[float], Dict[str, float]]],
 ]:
-    """Estimate the influence of landmark number on result
+    """Estimate how landmark numbers influence outcome
 
     :param adatas: Single AnnData file or list or dictionary with
      AnnDatas to be analyzed.
@@ -320,10 +320,15 @@ def estimate_n_lanmdarks(
     :type max_cg_iterations: int
     :param tail_length: the last tail_length observations will
      be used to compute an average MLL value. If n_epochs are less than
-    tail_length, all epochs will be used instead. Defaults to 50.
+     tail_length, all epochs will be used instead. Defaults to 50.
     :type tail_length: int
     :param seed: value of random seed, defaults to 1.
     :type seed: int
+    :param spread_distance: distance between points in Poisson Disc Sampling.
+     Equivalent to :paramref:`~eggplant.methods.PoissonDiscSampler.min_dist`.
+    :type spread_distance: Optional[float]
+    :param diameter_multiplier: applicable to assays where the
+    :type diameter_multiplier: float
 
     :return: A tuple with a vector listing the number of landmarks
      used in each evaluation as first element and as second the
@@ -356,9 +361,9 @@ def estimate_n_lanmdarks(
 
     for k, _adata in enumerate(adatas):
         if spread_distance is None:
-            center_to_center_dist = ut.get_center_to_center_distance(_adata)
-            if center_to_center_dist:
-                spread_distance = center_to_center_dist * center_to_center_multiplier
+            diameter = ut.get_capture_location_diameter(_adata)
+            if diameter:
+                spread_distance = diameter * diameter_multiplier
             else:
                 raise NotImplementedError(
                     "center to center distance access is not yet"
