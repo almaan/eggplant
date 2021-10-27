@@ -681,7 +681,7 @@ def landmark_diagnostics(
 
     _savgol_params = dict(
         window_length=5,
-        polyorder=3,
+        polyorder=4,
     )
 
     if savgol_params is not None:
@@ -733,19 +733,52 @@ def landmark_diagnostics(
     plt.show()
 
 
-def visualize_dge(
+def visualize_sdea_results(
     ref: "m.GPModel",
     dge_res: Dict[str, np.ndarray],
     cmap: str = "RdBu_r",
     n_cols: int = 4,
     marker_size: float = 10,
-    side_size=8,
-    title_fontsize=20,
-    colorbar_fontsize=20,
+    side_size: float = 8,
+    title_fontsize: float = 20,
+    colorbar_fontsize: float = 20,
     colorbar_orientation: Literal["horizontal", "vertical"] = "horizontal",
     no_sig_color: str = "lightgray",
     reorder_axes: Optional[List[int]] = None,
 ) -> Tuple[plt.Figure, plt.Axes]:
+    """Visualize result from spatial differential expression analysis
+
+    :param ref: reference object of type :class:`~eggplant.models.Reference`,
+     information should have been transferred to the object.
+    :type ref: m.GPModel
+    :param dge_res: result from :func:`~eggplant.sdea.sdea`
+    :type dge_res: Dict[str, np.ndarray],
+    :param cmap: colormap to use (choose from matplotlib), defaults
+     to `RdBu_r`
+    :type cmap: str
+    :param n_cols: number of columns, defaults to 4
+    :type n_cols: int
+    :param marker_size: size of marker, defaults to 10
+    :type marker_size: float
+    :type side_size: side of each subplot panel, defaults to 8
+    :type side_size: float
+    :param title_fontsize: fontsize of title, defaults to 20
+    :type title_fontsize: float
+    :param colorbar_fontsize: fontsize of colorbar ticks, defaults to 20
+    :colorbar_fontsize: float
+    :param colorbar_orientation: orientation of colorbar, defaults to `horizontal`
+    :type colorbar_orientation: Literal["horizontal", "vertical"]
+    :param no_sig_color: color of locations with non-significant,
+     difference in expression, defaults to `lightgray`
+    :type no_sig_color: str
+    :param reorder_axes: new order of axes, original order is [0, 1, 2,..],
+     give new new order as [1, 0, 2,...] to switch place of subplot 1 and 0.
+    :type reorder_axes: Optional[List[int]]
+
+    :return: Figure and Axes objects
+    :rtype: Tuple[plt.Figure,plt.Axes]
+
+    """
 
     n_comps = len(dge_res)
     if cmap in plt.colormaps():

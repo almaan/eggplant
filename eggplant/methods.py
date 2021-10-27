@@ -515,7 +515,7 @@ class PoissonDiscSampler:
         self,
         crd: np.ndarray,
         min_dist: float,
-        seed: int = 1,
+        seed: Optional[int] = None,
     ) -> None:
         """Constructor method
 
@@ -533,7 +533,8 @@ class PoissonDiscSampler:
 
         """
 
-        self.seed = seed
+        if seed is not None:
+            self.seed = seed
 
         self.r = min_dist
         self.r2 = self.r ** 2
