@@ -14,16 +14,14 @@ jobs:
   run:
     runs-on: ubuntu-latest
     steps:
-      - name: Install dependencies
-        run: |
-          pip install --upgrade pip
-          pip install coverage
-      - name: Fetch
-        uses: actions/checkout@master
-      - name: Test
-        run: |
-          coverage run -m --source=eggplant unittest discover
-          coverage xml
+      # - name: Install dependencies
+      #   run: |
+      #     pip install --upgrade pip
+      #     pip install coverage
+      # - name: Test
+      #   run: |
+      #     coverage run -m --source=eggplant unittest discover
+      #     coverage xml
       - name: Upload
         uses: codecov/codecov-action@v1
         with:
