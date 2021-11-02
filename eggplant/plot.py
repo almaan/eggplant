@@ -599,7 +599,7 @@ class ColorMapper:
             n = x
             clr = [self.numeric_cdict[ii % self.n_c] for ii in range(n)]
 
-        elif hasattr(x, "__len__"):
+        elif hasattr(x, "__len__") and not isinstance(x, str):
             if isinstance(x, (tuple, list)):
                 uni = set(x)
                 has_keys = all([k in self.cdict.keys() for k in uni])
@@ -899,7 +899,7 @@ def visualize_landmark_spread(
     feature: Optional[str] = None,
     layer: Optional[str] = None,
     spread_distance: Optional[float] = None,
-    diameter_multiplier: Optional[float] = None,
+    diameter_multiplier: float = 1,
     side_size: float = 5,
     marker_size: float = 20,
     landmark_marker_size: Optional[float] = None,
@@ -928,7 +928,7 @@ def visualize_landmark_spread(
     :type spread_distance: Optional[float]
     :param diameter_multiplier: see
      :py:paramref:`~eggplant.methods.estimate_n_landmarks.diameter_multiplier`
-    :type diameter_multiplier: Optional[float]
+    :type diameter_multiplier: float
     :param side_size: side size of plot, defaults to 5
     :type side_size: float
     :param marker_size: marker size of spatial locations, defaults to 20

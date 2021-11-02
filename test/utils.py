@@ -68,8 +68,8 @@ def create_adata(
     adata.uns["spatial"] = dict(
         sample_0=dict(
             scalefactors=dict(
-                tissue_hires_scalef=1337,
-                spot_diameter_fullres=80085,
+                tissue_hires_scalef=1,
+                spot_diameter_fullres=0.1,
             ),
             images=dict(
                 hires=np.random.random((10, 10)),

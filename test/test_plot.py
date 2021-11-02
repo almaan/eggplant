@@ -63,14 +63,38 @@ class TestVisualizeObserved(unittest.TestCase):
 
 
 class TestColorMapper(unittest.TestCase):
-    def test_default(
+    def __init__(self, *args, **kwargs):
+        super(TestColorMapper, self).__init__(*args, **kwargs)
+        self.cmap = eg.pl.ColorMapper(eg.C.LANDMARK_CMAP)
+
+    def test_n_elements(
         self,
     ):
-        cmap = eg.pl.ColorMapper(eg.C.LANDMARK_CMAP)
+        clr = self.cmap(10, n_elements=True)
 
-        clr = cmap(10, n_elements=True)
-        clr = cmap({k for k in eg.C.LANDMARK_CMAP.keys()})
-        clr = cmap(1)
+    def test_dict(
+        self,
+    ):
+        clr = self.cmap({k for k in eg.C.LANDMARK_CMAP.keys()})
+
+    def test_key(
+        self,
+    ):
+        clr = self.cmap(1)
+
+    def test_list(
+        self,
+    ):
+        clr = self.cmap([1, 2, 1, 1, 2])
+
+    def test_error(
+        self,
+    ):
+        self.assertRaises(
+            ValueError,
+            self.cmap,
+            "doggo",
+        )
 
 
 class TestModelDiagnostics(unittest.TestCase):
@@ -269,3 +293,23 @@ class VisualizeSDEAResults(unittest.TestCase):
             cmap="magma",
             colorbar_orientation="vertical",
         )
+
+
+class VisualizeLandmarkSpread(unittest.TestCase):
+    def __init__(self, *args, **kwargs):
+        super(VisualizeLandmarkSpread, self).__init__(*args, **kwargs)
+        self.adata = ut.create_adata()
+
+    def test_default(
+        self,
+    ):
+        fig, ax = eg.pl.visualize_landmark_spread(self.adata, return_figures=True)
+        plt.close("all")
+
+    def test_feature(
+        self,
+    ):
+        fig, ax = eg.pl.visualize_landmark_spread(
+            self.adata, feature="feature_0", return_figures=True
+        )
+        plt.close("all")

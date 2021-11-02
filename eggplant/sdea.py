@@ -61,6 +61,9 @@ def mixed_normal(
 
     """
 
+    if len(mus.shape) == 1:
+        mus = mus.reshape(1, -1)
+
     N = mus.shape[1]
 
     if ws is None:
