@@ -49,16 +49,7 @@ jobs:
   run:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
-
-      # - name: Install dependencies
-      #   run: |
-      #     pip install --upgrade pip
-      #     pip install coverage
-      # - name: Test
-      #   run: |
-      #     coverage run -m --source=eggplant unittest discover
-      #     coverage xml
+      - uses: actions/checkout@master
       - name: Upload
         uses: codecov/codecov-action@v2
         with:
