@@ -1,50 +1,12 @@
-# name: Example workflow for Codecov
-# on:
-#   push:
-#     branches:
-#       - master
-#       - publish
-# jobs:
-#   run:
-#     runs-on: ubuntu-latest 
-#     env:
-#       PYTHON: '3.7'
-#     steps:
-#     - uses: actions/checkout@master
-#     - name: Setup Python
-#       uses: actions/setup-python@master
-#       with:
-#         python-version: 3.7
-#     - name: Generate coverage report
-#       run: |
-#         python3 ./setup.py install
-#         pip install coverage
-#         coverage run -m --source=eggplant unittest discover
-#         coverage xml
-#     - name: Upload coverage to Codecov
-#       uses: codecov/codecov-action@v2
-#       with:
-#         token: ${{ secrets.CODECOV_TOKEN }}
-#         directory: ./coverage/reports/
-#         env_vars: PYTHON
-#         fail_ci_if_error: true
-#         files: ./coverage.xml
-#         flags: unittests
-#         name: codecov-umbrella
-#         # path_to_write_report: ./coverage/codecov_report.txt
-#         verbose: true
 name: codecov
 
 on:
   push:
     branches:
       - master
-      - publish
   pull_request:
     branches:
       - master
-      - publish
-
 jobs:
   run:
     runs-on: ubuntu-latest
@@ -56,4 +18,3 @@ jobs:
           files: ./coverage.xml
           token: ${{ secrets.CODECOV_TOKEN }}
           verbose: true
-
