@@ -10,9 +10,9 @@ Welcome to eggplant's documentation!
    :maxdepth: 3
    :caption: Getting Started:
 
+   eggplant
    about
    install
-   eggplant
 
 .. toctree::
    :maxdepth: 1

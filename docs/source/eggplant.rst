@@ -34,3 +34,12 @@ eggplant.preprocess module
     :members:
     :undoc-members:
     :show-inheritance:
+
+eggplant.sdea module
+--------------------------
+
+.. automodule:: eggplant.sdea
+    :members:
+    :undoc-members:
+    :show-inheritance:
+    :exclude-members: ztest

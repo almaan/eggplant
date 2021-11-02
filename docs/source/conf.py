@@ -29,7 +29,7 @@ author = "Alma Andersson"
 # The short X.Y version
 version = ""
 # The full version, including alpha/beta/rc tags
-release = "0.0.1"
+release = "0.1"
 
 
 # -- General configuration ---------------------------------------------------
@@ -48,6 +48,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.githubpages",
     "sphinx_rtd_theme",
+    "sphinx_paramlinks",
     "nbsphinx",
     "sphinxcontrib.bibtex",
 ]
