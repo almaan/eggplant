@@ -17,8 +17,10 @@ jobs:
         python-version: 3.7
     - name: Generate coverage report
       run: |
+        python3 ./setup.py
         pip install coverage
         coverage run -m --source=eggplant unittest discover
+        coverage xml
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v2
       with:
