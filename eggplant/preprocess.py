@@ -240,14 +240,20 @@ def match_scales(
 
     n_lmk_thrs = 100
 
-    obs_lmk = adata.uns["curated_landmarks"].copy()
+    if "curated_landmarks" not in adata.uns.keys():
+        raise Exception("curated_landmarks key nor found in the adata.uns slot")
+    elif hasattr(adata.uns["curated_landmarks"], "copy"):
+        obs_lmk = adata.uns["curated_landmarks"].copy()
+    else:
+        obs_lmk = adata.uns["curated_landmarks"]
+
     if isinstance(obs_lmk, pd.DataFrame):
         obs_lmk_names = list(obs_lmk.index)
         obs_lmk = obs_lmk.values
     elif isinstance(obs_lmk, np.ndarray):
         obs_lmk_names = None
     else:
-        NotImplementedError(
+        raise NotImplementedError(
             "landmarks of type : {} is not supported".format(type(obs_lmk))
         )
 
@@ -261,9 +267,10 @@ def match_scales(
         ref_lmk = reference
         ref_lmk_names = None
     else:
-        NotImplementedError(
+        raise NotImplementedError(
             "reference of type : {} is not supported".format(type(reference))
         )
+
     ref_lmk, obs_lmk = ut.match_arrays_by_names(
         ref_lmk,
         obs_lmk,
@@ -283,7 +290,8 @@ def match_scales(
 
     try:
         sample_name = list(adata.uns["spatial"].keys())[0]
-        for scalef in ["tissue_hires_scalef", "tissue_lowres_scalef"]:
+        scalef_names = [x for x in adata.uns["spatial"][sample_name] if "scalef" in x]
+        for scalef in scalef_names:
             old_sf = adata.uns["spatial"][sample_name]["scalefactors"].get(scalef, 1)
             adata.uns["spatial"][sample_name]["scalefactors"][scalef] = (
                 old_sf / av_ratio
@@ -380,7 +388,11 @@ def spatial_smoothing(
 
     """
 
-    spatial_key = kwargs.get("spatial_key", "spatial")
+    if "spatial_key" in kwargs:
+        spatial_key = kwargs.pop("spatial_key")
+    else:
+        spatial_key = "spatial"
+
     if spatial_key not in adata.obsm.keys():
         raise Exception("Spatial key not present in AnnData object")
 
@@ -429,6 +441,41 @@ def default_normalization(
     total_counts: float = 1e4,
     exclude_highly_expressed: bool = False,
 ) -> None:
+    """default normalization recipe
+
+    the normalization strategy that applied for
+    a majority of the analyses presented in the
+    original manuscript. We abstain from calling
+    it a recommended strategy, as the best strategy
+    is depends on your data. However, this strategy
+    have worked well with several data types.
+
+    The recipe is based on preprocessing functions from
+    the :mod:`scanpy.preprocess` module and is given
+    as follows:
+
+    .. code-block:: python
+
+        sc.pp.filter_genes(adata, min_cells=min_cells)
+        sc.pp.normalize_total(adata,total_counts,
+        exclude_highly_expressed=exclude_highly_expressed)
+        sc.pp.log1p(adata)
+        sc.pp.scale(adata)
+
+    :param adata: anndata object to normalize
+    :type adata: ad.AnnData,
+    :param min_cells: argument to :func:`scanpy.preprocess.filter_genes`
+    :type min_cells: float = 0.1,
+    :param total_counts: argument to :func:`scanpy.preprocess.normalize_total`,
+     default is `1e4`
+    :type total_counts: float
+    :param exclude_highly_expressed: argument
+     to :func:`scanpy.preprocess.normalize_total`,
+     default False
+    :type exclude_highly_expressed: bool
+
+
+    """
 
     sc.pp.filter_genes(adata, min_cells=min_cells)
     sc.pp.normalize_total(

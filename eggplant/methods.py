@@ -185,6 +185,8 @@ def transfer_to_reference(
 
     if subsample is None:
         subsample = [None for _ in range(len(adatas))]
+    if not hasattr(subsample, "__len__"):
+        subsample = [subsample for _ in range(len(adatas))]
 
     for k, _adata in enumerate(adatas):
         adata = ut.subsample(_adata, keep=subsample[k])
@@ -462,14 +464,6 @@ def estimate_n_landmarks(
         else:
             likelihoods[names[k]] = sample_trace
 
-            # model.eval()
-            # with t.no_grad():
-            #     out = model(ut._to_tensor(sub_landmark_distances))
-            #     mean_pred = out.mean.cpu().detach().numpy()
-
-            # rmse_loss = ut.rmse(mean_pred, feature_values)
-            # sample_trace[w] = rmse_loss
-
     return (n_lmks, likelihoods)
 
 
@@ -533,8 +527,7 @@ class PoissonDiscSampler:
 
         """
 
-        if seed is not None:
-            self.seed = seed
+        self.seed = seed
 
         self.r = min_dist
         self.r2 = self.r ** 2
@@ -595,6 +588,17 @@ class PoissonDiscSampler:
         point: Union[np.ndarray, Tuple[float, float]],
         k: int = 5,
     ) -> np.ndarray:
+        """adds k points randomly in annulus around point
+
+        :param point: point to create annulus around
+        :type point: Union[np.ndarray, Tuple[float, float]],
+        :param k: number of points to add to annulus, default 5
+        :type k: int
+
+        :return: array of coordinates with added points
+        :rtype: np.ndarray
+
+        """
         xy = []
         while len(xy) < k:
             _r = np.random.uniform(self.r, 2 * self.r)
@@ -614,6 +618,17 @@ class PoissonDiscSampler:
         self,
         idx: Tuple[int, int],
     ) -> List[Tuple[int, int]]:
+        """get neighbors in grid
+
+        Note: includes self.
+
+        :param idx: index of cell to get neighbors of
+        :type idx: Tuple[int,int]
+
+        :return: list of neighbor indices
+        :rtype: List[Tuple[int,int]]
+
+        """
         res = []
         for px in range(-2, 3):
             for py in range(-2, 3):
@@ -631,8 +646,22 @@ class PoissonDiscSampler:
         max_points: Optional[int] = None,
         k: Optional[int] = 4,
     ) -> np.ndarray:
+        """sample from domain
 
-        np.random.seed(self.seed)
+        :param max_points: max number of points
+         to sample from domain.
+        :type max_points: Optional[int]
+        :param k: number of points to position
+         in annulus, default 4
+        :type k: Optional[int]
+
+        :return: array of samples from domain
+        :rtype: np.ndarray
+
+        """
+
+        if self.seed is not None:
+            np.random.seed(self.seed)
 
         if max_points is None:
             max_points = np.inf

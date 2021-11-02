@@ -52,17 +52,31 @@ def create_adata(
         var=var,
     )
 
+    adata.layers["var"] = np.random.random(adata.X.shape)
     adata.obsm["spatial"] = model_input["domain"].numpy()
     lmks = model_input["landmark_distances"].numpy()
     adata.uns["curated_landmarks"] = np.random.random((n_lmks, 2))
+
     if pandas_landmark_distance:
         lmks = pd.DataFrame(
             lmks,
-            columns=[f"L{k}" for k in range(n_lmks)],
+            columns=[f"Landmark_{k}" for k in range(n_lmks)],
             index=adata.obs.index,
         )
     adata.obsm["landmark_distances"] = lmks
     adata.layers["layer"] = adata.X.copy()
+    adata.uns["spatial"] = dict(
+        sample_0=dict(
+            scalefactors=dict(
+                tissue_hires_scalef=1337,
+                spot_diameter_fullres=80085,
+            ),
+            images=dict(
+                hires=np.random.random((10, 10)),
+                lowres=np.random.random((5, 5)),
+            ),
+        )
+    )
     return adata
 
 
@@ -72,13 +86,12 @@ def create_image(
     return_counts: bool = False,
 ) -> Image.Image:
 
-    np.random.random(13)
+    np.random.random(3)
     probs = np.random.dirichlet(np.ones(3))
     img = np.zeros((side_size, side_size, 3))
     r = side_size / 4
     r2 = r ** 2
     center = [int(side_size) / 2] * 2
-    idx = []
     colors = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
     counts = np.zeros((3 if color else 1))
     for ii in range(side_size):

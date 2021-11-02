@@ -38,6 +38,28 @@ def mixed_normal(
     vrs: np.ndarray,
     ws: Optional[np.ndarray] = None,
 ) -> Tuple[np.ndarray, np.ndarray]:
+    """mean and var for weighted mixed
+    normal.
+
+    For n distributions :math:`N_i(\mu_i,\sigma^2_i)`
+    we compute the mean and variance for the new weighted
+    mix:
+
+    :math:`N(\mu_{new},\sigma^2_{new}) = \sum_{i=1}^n w_iN(\mu_i,\sigma^2_i)`
+
+    :param mus: mean values for each sample
+    :type mus: np.ndarray
+    :param vrs: variance values for each sample
+    :type vrs: np.ndarray
+    :param ws: weights to use when computing the
+     new mean for the mixed distribution.
+    :type ws: Optional[np.ndarray]
+
+    :return: a tuple being :math:`(\mu_{new},\sigma^2_{new})`
+    :rtype: Tuple[np.ndarray,np.ndarray]
+
+
+    """
 
     N = mus.shape[1]
 
@@ -70,12 +92,29 @@ def sdea(
     conduct spatial differential expression analysis
     (sDEA)
 
-    :type data: Union[ad.AnnData, "m.Reference"],
-    :type group_col: str,
-    :type n_std: int = 2,
-    :type subset: Optional[Dict[str, Any]] = None,
-    :type weights: Optional[np.ndarray] = None,
-
+    :param data: object (either anndata or reference) containing
+     the spatial profiles to be compared.
+    :type data: Union[ad.AnnData, "m.Reference"]
+    :param group_col: column to make comparison with respect to
+    :type group_col: str
+    :param n_std: number of standard deviations that should be used when testing
+     for differential expression. If the interval mean_1 +/- n_std*std_1
+     overlaps with the interval mean_2 +/- n_std*std_2 the features are
+     considered as non-differentially expressed, defaults to 2
+    :type n_std: int
+    :param subset: subset groups in the contrastive analysis, for example
+     `subset={feature:value}` will only compare those profiles where the value
+     of *feature* is *value*, defaults to no subsampling
+    :type subset: Optional[Dict[str, Any]]
+    :param weights: n_samples vector of weights, where the i:th value of the
+     vector indicates the weight that should be assigned to each sample in the
+     sdea analysis, default to 1/n_samples.
+    :type weights: Optional[np.ndarray]
+    :return: a dictionary where each analyzed feature is an entry, and each
+     entry is a dictionary with two values: `diff` being the spot-wise difference
+     between the samples, and `sig` being an indicator of whether the difference
+     is significant or not.
+    :rtype: Dict[str, Dict[str, np.ndarray]]
 
     """
 

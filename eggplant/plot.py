@@ -212,7 +212,7 @@ def model_diagnostics(
     n_cols: int = 5,
     width: float = 5,
     height: float = 3,
-    return_figure: bool = False,
+    return_figures: bool = False,
 ) -> Optional[Tuple[plt.Figure, plt.axes]]:
     """plot loss history for models
 
@@ -231,9 +231,9 @@ def model_diagnostics(
      (visualizing one model's loss over time),
      defaults to 3
     :type height: float = 3,
-    :param return_figure: set to True if Figure and Axes objects should be returned,
+    :param return_figures: set to True if Figure and Axes objects should be returned,
      defaults to False
-    :type return_figure: bool = False,
+    :type return_figures: bool = False,
 
     :return: None or Figure and Axes objects, depending on return_figure value.
     :rtype: Optional[Tuple[plt.Figure,plt.Axes]]
@@ -285,7 +285,7 @@ def model_diagnostics(
 
     fig.tight_layout()
 
-    if return_figure:
+    if return_figures:
         return fig, ax
     else:
         plt.show()
@@ -422,7 +422,7 @@ def distplot_transfer(
     title_fontsize: float = 25,
     label_fontsize: float = 20,
     ticks_fontsize: float = 15,
-    return_figure: bool = True,
+    return_figures: bool = True,
 ) -> Optional[Tuple[plt.Figure, plt.Axes]]:
     """Swarmplot-like visualization of enrichment
 
@@ -452,11 +452,11 @@ def distplot_transfer(
     :type label_fontsize: float
     :param ticks_fontsize: fontisize of x-and yticks, defaults to 15
     :type ticks_fontsize: float
-    :param return figure: set to True if Figure and Axes objexts should be returned,
+    :param return_figures: set to True if Figure and Axes objexts should be returned,
      defaults to True
-    :type return_figure: bool
+    :type return_figures: bool
 
-    :return: None or Figure and Axes objects, depending on return_figure value.
+    :return: None or Figure and Axes objects, depending on return_figures value.
     :rtype: Union[None,Tuple[plt.Figure,plt.Axes]]
 
     """
@@ -556,7 +556,7 @@ def distplot_transfer(
 
     fig.tight_layout()
 
-    if return_figure:
+    if return_figures:
         return (fig, ax)
     else:
         plt.show()
@@ -628,9 +628,42 @@ def landmark_diagnostics(
     line_style_dict: Optional[Dict[str, Any]] = None,
     label_style_dict: Optional[Dict[str, Any]] = None,
     ticks_style_dict: Optional[Dict[str, Any]] = None,
-    return_figure: bool = False,
+    return_figures: bool = False,
     savgol_params: Dict[str, Any] = None,
 ) -> Optional[Tuple[plt.Figure, plt.Axes]]:
+    """
+
+    :param lmk_eval_res: output from :fun:`~eggplant.methods.estimate_n_landmarks`
+    :type lmk_eval_res: Tuple[List[List[float]], Union[List[float], Dict[str, float]]]
+    :param side_size: side size of plot, if None then based on data, defaults to None
+    :type side_size: Optional[Union[Tuple[float, float], float]] = None,
+    :param title_fontsize: fontsize of plot title, default 20
+    :type title_fontsize: float
+    :param lower_bound: lower_bound value (for number of landmarks),
+     will be indicated by a black dashed line
+    :type lower_bound: Optional[Union[Dict[str, float], List[float]]]
+    :param line_style_dict: dictionary with style
+     parameter for :fun:`~matplotlib.pyplot.plot`,
+    default None
+    :type line_style_dict: Optional[Dict[str, Any]]
+    :param label_style_dict: dictionary with
+     style parameters for :fun:`~matplotlib.pyplot.xlabel`,
+     and `ylabel`, default None
+    :type label_style_dict: Optional[Dict[str, Any]]
+    :param ticks_style_dict: dictionary with style parameters
+     for `xaxis.set_tick_params` and `yaxis.set_tick_params`
+    :type ticks_style_dict: Optional[Dict[str, Any]]
+    :param return_figures: set to true to return figure,
+     otherwise only show, default False
+    :type return_figures: bool
+    :param savgol_params: parameters to `scipy.signal.savgol_filter`,
+     default parameters `polyorder=4` and `window_length=5`
+    :type savgol_params: Dict[str, Any]
+
+    :return: plot of nMLL loss against the number of landmarks
+    :rtype: Optional[Tuple[plt.Figure, plt.Axes]]
+
+    """
 
     n_samples = len(lmk_eval_res[1])
     n_evals = len(lmk_eval_res[0])
@@ -679,9 +712,14 @@ def landmark_diagnostics(
     elif isinstance(lower_bound, dict):
         lower_bound = list(lower_bound.values())
 
+    window_length = min(5, len(lmk_eval_res[0]))
+    if window_length % 2 == 0:
+        window_length -= 1
+    polyorder = window_length - 1
+
     _savgol_params = dict(
-        window_length=5,
-        polyorder=4,
+        window_length=window_length,
+        polyorder=polyorder,
     )
 
     if savgol_params is not None:
@@ -727,7 +765,7 @@ def landmark_diagnostics(
                 alpha=0.3,
                 color="blue",
             )
-    if return_figure:
+    if return_figures:
         return (fig, ax)
 
     plt.show()
@@ -801,6 +839,8 @@ def visualize_sdea_results(
         except:
             print("[ERROR] : Could not order axes according to specification.")
             _dge_res = dge_res
+    else:
+        _dge_res = dge_res
 
     for k, (comp, vals) in enumerate(_dge_res.items()):
         is_sig = vals["sig"]

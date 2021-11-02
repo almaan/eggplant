@@ -2,8 +2,6 @@ import pandas as pd
 import numpy as np
 import anndata as ad
 import torch as t
-from numba import njit
-from math import ceil
 
 from typing import Union, Optional, List, Tuple, TypeVar, Callable
 
@@ -21,7 +19,7 @@ def pd_to_np(x: Union[pd.DataFrame, np.ndarray]) -> np.ndarray:
 def _to_tensor(x: Union[t.Tensor, np.ndarray, pd.DataFrame]) -> t.Tensor:
     if isinstance(x, np.ndarray):
         return t.tensor(x.astype(np.float32))
-    if isinstance(x, pd.DataFrame):
+    if isinstance(x, (pd.DataFrame, pd.Series)):
         return t.tensor(x.values)
     else:
         return x
@@ -32,6 +30,14 @@ def tensor_to_np(x: Union[t.Tensor, np.ndarray]) -> np.ndarray:
         return x.detach().numpy()
     else:
         return x
+
+
+def obj_to_list(obj: Union[T, List[T]]) -> List[T]:
+    """Object to list"""
+    if not isinstance(obj, list):
+        return [obj]
+    else:
+        return obj
 
 
 def get_figure_dims(
@@ -68,7 +74,7 @@ def _get_feature(
             return x.var_vector(feature, layer=layer)
 
     elif adata.obsm.keys() is not None:
-        get_feature = None
+        no_obsm_match = True
         for key in adata.obsm.keys():
             if (
                 hasattr(adata.obsm[key], "columns")
@@ -78,21 +84,12 @@ def _get_feature(
                 def get_feature(x: ad.AnnData):
                     return x.obsm[key][feature].values
 
-                break
-        if get_feature is None:
-            raise ValueError
-        else:
-            raise ValueError
+                no_obsm_match = False
+
+        if no_obsm_match:
+            raise ValueError(f"Feature {feature} not found in any slot.")
 
     return get_feature
-
-
-def obj_to_list(obj: Union[T, List[T]]) -> List[T]:
-    """Object to list"""
-    if not isinstance(obj, list):
-        return [obj]
-    else:
-        return obj
 
 
 def match_data_frames(
@@ -126,9 +123,7 @@ def match_arrays_by_names(
 
     if a_obj_names is not None and b_obj_names is not None:
         inter = list(set(a_obj_names).intersection(b_obj_names))
-        assert (
-            len(inter) > 0
-        ), "No shared landmarks between reference and observed data."
+        assert len(inter) > 0, "No shared landmarks between objects"
         keep_a_obj = [k for k, x in enumerate(a_obj_names) if x in inter]
         keep_b_obj = [k for k, x in enumerate(b_obj_names) if x in inter]
         keep_a_obj.sort()
@@ -139,7 +134,6 @@ def match_arrays_by_names(
     return a_obj, b_obj
 
 
-@njit
 def average_distance_ratio(
     arr1: np.ndarray,
     arr2: np.ndarray,
@@ -262,23 +256,23 @@ def get_capture_location_diameter(
     return spot_diameter
 
 
-def rmse(
-    x: np.ndarray,
-    y: np.ndarray,
-) -> float:
+# def rmse(
+#     x: np.ndarray,
+#     y: np.ndarray,
+# ) -> float:
 
-    _x = x.flatten()
-    _y = y.flatten()
+#     _x = x.flatten()
+#     _y = y.flatten()
 
-    return np.mean((_x - _y) ** 2)
+#     return np.mean((_x - _y) ** 2)
 
 
-def seq(x: int, n: int, divisor: int = 3):
-    y = [x, x + ceil(x / divisor)]
+# def seq(x: int, n: int, divisor: int = 3):
+#     y = [x, x + ceil(x / divisor)]
 
-    while y[-1] < n:
-        y.append(y[-1] + ceil(y[-2] / divisor))
-    if y[-1] > n:
-        y.pop(-1)
+#     while y[-1] < n:
+#         y.append(y[-1] + ceil(y[-2] / divisor))
+#     if y[-1] > n:
+#         y.pop(-1)
 
-    return y
+#     return y

@@ -13,7 +13,7 @@ from typing import Optional, List, Union, Dict
 from typing_extensions import Literal
 
 from . import utils as ut
-from . import de
+from . import sdea
 
 
 class GPModel(gp.models.ExactGP):
@@ -59,14 +59,15 @@ class GPModel(gp.models.ExactGP):
 
         if isinstance(landmark_distances, pd.DataFrame):
             self.landmark_names = landmark_distances.columns.tolist()
+            landmark_distances = t.tensor(landmark_distances.values.astype(np.float32))
         else:
             if landmark_names is None:
-                self.landmark_names = ["L{}".format(x) for x in range(self.L)]
+                self.landmark_names = ["Landmark_{}".format(x) for x in range(self.L)]
             else:
                 self.landmark_names = landmark_names
 
-        self.ldists = landmark_distances
-        self.features = feature_values
+        self.ldists = t.tensor(landmark_distances)
+        self.features = t.tensor(feature_values)
 
         self.ldists = self.ldists.to(device=self.device)
         self.features = self.features.to(device=self.device)
@@ -88,7 +89,7 @@ class GPModel(gp.models.ExactGP):
         if kernel_fun is None:
             kernel = gp.kernels.RQKernel()
         else:
-            kernel = kernel_fun()
+            kernel = kernel_fun
 
         self.covar_module = gp.kernels.ScaleKernel(kernel)
 
@@ -154,12 +155,16 @@ class Reference:
 
         if isinstance(landmarks, np.ndarray):
             landmarks = t.tensor(landmarks.astype(np.float32))
-            self.lmk_to_pos = {"L{}".format(x): x for x in range(len(landmarks))}
+            self.lmk_to_pos = {
+                "Landmark_{}".format(x): x for x in range(len(landmarks))
+            }
         elif isinstance(landmarks, pd.DataFrame):
             self.lmk_to_pos = {l: k for k, l in enumerate(landmarks.index.values)}
             landmarks = t.tensor(landmarks.values.astype(np.float32))
         elif isinstance(landmarks, t.Tensor):
-            self.lmk_to_pos = {"L{}".format(x): x for x in range(len(landmarks))}
+            self.lmk_to_pos = {
+                "Landmark_{}".format(x): x for x in range(len(landmarks))
+            }
 
         mn = t.min(domain)
         mx = t.max(domain)
@@ -216,7 +221,7 @@ class Reference:
                     _meta = meta
                 # if meta is 2d array
                 if len(_meta.shape) == 2:
-                    columns = [f"X{x}" for x in range(meta.shape[1])]
+                    columns = [f"X{x}" for x in range(meta.shape[0])]
                     self._obs_meta = pd.DataFrame(
                         _meta,
                         columns=columns,
@@ -347,8 +352,6 @@ class Reference:
 
         if models is None:
             models = self.adata.var.index
-        elif isinstance(models, str) and models == "composite":
-            self.adata.obs["composite"] = self.adata.X.mean(axis=1)
         else:
             if not isinstance(models, list):
                 models = [models]
@@ -379,7 +382,7 @@ class Reference:
             name = "composite_{}".format(fv)
             sel_idx = self.adata.var[by].values == fv
 
-            mean_vals, mean_vars = de.mixed_normal(
+            mean_vals, mean_vars = sdea.mixed_normal(
                 self.adata.X[:, sel_idx], self.adata.layers["var"][:, sel_idx]
             )
 

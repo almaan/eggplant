@@ -97,7 +97,7 @@ class TransferTest(unittest.TestCase):
 
         reference_input = ut.create_model_input()
         ref_lmk = reference_input["landmarks"]
-        index = [f"L{k}" for k in range(ref_lmk.shape[0])]
+        index = [f"Landmark_{k}" for k in range(ref_lmk.shape[0])]
         ref_lmk = pd.DataFrame(
             ref_lmk.numpy(),
             index=index,
@@ -207,6 +207,77 @@ class TransferTest(unittest.TestCase):
             n_epochs=10,
             reference=ref,
         )
+
+    def test_transfer_add_to_existing(
+        self,
+    ):
+        adata = ut.create_adata()
+        feature = adata.var.index[0]
+        reference_input = ut.create_model_input()
+        ref = eg.m.Reference(
+            domain=reference_input["domain"],
+            landmarks=reference_input["landmarks"],
+            meta=t.tensor(reference_input["meta"]),
+        )
+
+        eg.fun.transfer_to_reference(
+            [adata],
+            feature,
+            reference=ref,
+            n_epochs=10,
+        )
+
+        eg.fun.transfer_to_reference(
+            [adata],
+            feature,
+            reference=ref,
+        )
+
+
+class EstimateNLandmarks(unittest.TestCase):
+    def test_base(
+        self,
+    ):
+        adata = ut.create_adata()
+        prms = dict(
+            n_max_lmks=5,
+            n_min_lmks=1,
+            n_evals=2,
+            n_reps=2,
+            n_epochs=10,
+            spread_distance=0.1,
+        )
+
+        res = eg.fun.estimate_n_landmarks(
+            adata,
+            **prms,
+        )
+
+        res = eg.fun.estimate_n_landmarks(
+            [adata],
+            **prms,
+        )
+        res = eg.fun.estimate_n_landmarks(
+            dict(model=adata),
+            **prms,
+        )
+
+    def test_custom(
+        self,
+    ):
+        adata = ut.create_adata()
+        res = eg.fun.estimate_n_landmarks(
+            adata,
+            n_max_lmks=5,
+            n_min_lmks=1,
+            n_evals=2,
+            n_reps=2,
+            feature="feature_0",
+            n_epochs=10,
+            spread_distance=0.1,
+        )
+
+        lower_bound = eg.fun.landmark_lower_bound(*res)
 
 
 if __name__ == "__main__":
