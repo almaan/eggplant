@@ -1,4 +1,4 @@
-name: build
+name: codecov 
 
 on:
   push:
@@ -14,6 +14,10 @@ jobs:
   run:
     runs-on: ubuntu-latest
     steps:
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install coverage
       - name: Fetch
         uses: actions/checkout@master
       - name: Test
