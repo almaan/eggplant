@@ -29,8 +29,7 @@ setuptools.setup(
         "scanpy>=1.5.0",
         "torch>=1.8.1",
         "gpytorch>=1.4.2",
-        "squidpy==1.0.0",
+        "squidpy=>1.1.0",
         "morphops>=0.1.12",
-        "kneed>=0.7.0",
     ],
 )

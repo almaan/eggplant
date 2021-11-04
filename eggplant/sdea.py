@@ -6,6 +6,8 @@ import numpy as np
 
 from scipy.stats import norm
 from collections import OrderedDict
+from numba import njit
+
 
 from . import models as m
 from . import utils as ut
@@ -186,7 +188,7 @@ def test_region_wise_enrichment(
     include_models: Union[List[str], str] = "composite",
     col_name: str = "region",
     feature_col: str = "feature",
-    alpha: float = 0.01,
+    alpha: float = 0.05,
     n_permutations: Optional[int] = None,
 ) -> Dict[str, Dict[str, Union[float, bool, str]]]:
     """region-wise enrichment test
@@ -230,7 +232,12 @@ def test_region_wise_enrichment(
     if n_permutations is not None and alpha < 1 / n_permutations:
         raise AssertionError("alpha cannot be less than 1 / n_permutations")
     elif n_permutations is None:
-        n_permutations = int(1 / alpha)
+        if alpha <= 0.05:
+            n_permutations = 1000
+        elif alpha >= 0.01:
+            n_permutations = 5000
+        else:
+            n_permutations = int(1 / alpha)
 
     if isinstance(data, m.Reference):
         _adata = data.adata
@@ -253,15 +260,22 @@ def test_region_wise_enrichment(
     n_1 = len(vals_1)
     n_2 = len(vals_2)
 
-    n_take = min(n_1, n_2)
+    @njit
+    def get_delta_mean(xs: np.ndarray, ys: np.ndarray):
+        n_x: int = len(xs)
+        n_y: int = len(ys)
+        k: int = 0
+        mean: float = 0
 
-    def take(x):
-        return np.random.choice(len(x), size=n_take, replace=True)
+        for ii in range(n_x):
+            for jj in range(n_y):
+                v1 = xs[ii]
+                v2 = ys[jj]
+                mean += v1 - v2
+                k += 1
+        mean /= k
 
-    def get_delta_mean(xs, ys):
-        v1 = xs[take(xs)]
-        v2 = ys[take(ys)]
-        return (v1 - v2).mean()
+        return mean
 
     res = dict()
 
@@ -272,18 +286,23 @@ def test_region_wise_enrichment(
             vals_1[:, model_idx].flatten(), vals_2[:, model_idx].flatten()
         )
 
-        perm_res = np.zeros(n_permutations - 1)
+        perm_res = np.zeros(n_permutations)
 
-        for perm in range(n_permutations - 1):
+        for perm in range(n_permutations):
             np.random.shuffle(vals_12)
             shuf_1 = vals_12[0:n_1]
             shuf_2 = vals_12[n_1 : (n_1 + n_2)]
             perm_res[perm] = get_delta_mean(shuf_1, shuf_2)
 
-        n_larger = np.sum(obs > perm_res)
-        pval = 1 - n_larger / n_permutations
+        p_left = np.sum(perm_res <= min(obs, -obs))
+        p_right = np.sum(perm_res >= max(obs, -obs))
+        pval = (p_left + p_right) / n_permutations
+
         is_sig = pval < alpha
 
-        res[model] = dict(pval=round(pval, 3), is_sig=is_sig, feature=feature)
-
+        res[model] = dict(
+            pval=round(pval, int(np.floor(np.log10(n_permutations)))),
+            is_sig=is_sig,
+            feature=feature,
+        )
         return res

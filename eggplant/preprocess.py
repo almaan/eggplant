@@ -402,7 +402,7 @@ def spatial_smoothing(
             adata,
             spatial_key=spatial_key,
             coord_type=coord_type,
-            n_neigh=n_neigh,
+            n_neighs=n_neigh,
             key_added=distance_key,
             **kwargs,
         )
