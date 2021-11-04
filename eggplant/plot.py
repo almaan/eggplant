@@ -139,7 +139,7 @@ def _visualize(
             vmax = [None] * len(counts)
 
     for k in range(len(counts)):
-        ordr = np.argsort(counts[k]).flatten()[::-1]
+        ordr = np.argsort(counts[k]).flatten()
         _sc = ax[k].scatter(
             crds[k][ordr, 0],
             crds[k][ordr, 1],
