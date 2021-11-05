@@ -30,7 +30,14 @@ adata = ad.AnnData(
 adata.obsm["spatial"] = adata.obs[["xcoord", "ycoord"]].values
 
 
-landmarks = ((1345, 547), (928, 888), (875, 1916), (1474, 870), (1028, 1570))
+landmarks = (
+    (1345, 547),
+    (928, 888),
+    (730, 1470),
+    (875, 1916),
+    (1474, 870),
+    (1028, 1570),
+)
 n_lmk = len(landmarks)
 landmarks = pd.DataFrame(landmarks)
 landmarks.columns = [["x_coord", "y_coord"]]
