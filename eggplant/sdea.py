@@ -274,7 +274,6 @@ def test_region_wise_enrichment(
                 mean += v1 - v2
                 k += 1
         mean /= k
-
         return mean
 
     res = dict()
