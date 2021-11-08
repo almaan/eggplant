@@ -11,5 +11,6 @@ build/
 !.github
 misc/
 data/
+!data/*/{landmarks,references}
 htmlcov/
 image-processing/
