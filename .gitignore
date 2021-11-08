@@ -6,6 +6,7 @@ dist/
 build/
 *.egg/
 *-info
+!.readthedocs.yaml
 !.pre-commit-config.yaml
 !.flake8
 !.github
@@ -15,3 +16,5 @@ data/*/curated
 !./data/*/{landmarks,references}
 htmlcov/
 image-processing/
+docs/rtd-requirements.txt
+make-rtd-reqs.sh
