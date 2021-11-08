@@ -1,14 +1,12 @@
 [![codecov](https://codecov.io/gh/almaan/eggplant/branch/publish/graph/badge.svg?token=NFJWGVK56D)](https://codecov.io/gh/almaan/eggplant)
 
-# eggplant - effortless generic GP landmark transfer
+# <img src="images/logo.png" width=400px> 
 
 This repository contains the source code for the package *eggplant* presented in
 the manuscript *"A Landmark-based Common Coordinate Framework for Spatial
 Transcriptomics Data"*; which - in short - is a method designed to transfer
 information from multiple spatial-transcriptomics data sets to a single
 reference representing a **Common Coordinate Framework** (CCF).
-
-
 
 ##  Installation and Tutorials
 We refer to our readthedocs page for instructions regarding installation and examples of use.
