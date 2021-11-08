@@ -1,1 +1,4 @@
 bluepy
+#sphinx
+sphinx-paramlinks
+nbsphinx
