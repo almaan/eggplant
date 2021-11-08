@@ -4,6 +4,7 @@ import setuptools
 
 with open("requirements.txt") as fr:
     reqs = fr.readlines()
+reqs = [r.rstrip("\n") for r in reqs]
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
