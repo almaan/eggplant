@@ -1,4 +1,5 @@
 [![codecov](https://codecov.io/gh/almaan/eggplant/branch/publish/graph/badge.svg?token=NFJWGVK56D)](https://codecov.io/gh/almaan/eggplant)
+[![Documentation Status](https://readthedocs.org/projects/spatial-eggplant/badge/?version=latest)](https://spatial-eggplant.readthedocs.io/en/latest/?badge=latest)
 
 # <img src="images/logo.png" width=400px> 
 
@@ -9,7 +10,7 @@ information from multiple spatial-transcriptomics data sets to a single
 reference representing a **Common Coordinate Framework** (CCF).
 
 ##  Installation and Tutorials
-We refer to our readthedocs page for instructions regarding installation and examples of use.
+We refer to our <a href="https://spatial-eggplant.readthedocs.io/en/latest/install.html">readthedocs</a> page for instructions regarding installation and examples of use.
 
 ## Structure
 We here outline the structure of this repository:
@@ -41,15 +42,24 @@ original source together with scripts to convert these into the working format
 We do not host any data in this repository, except for the landmark coordinates
 and the reference structures. This together with the provided scripts are
 sufficient to create all the charted data sets. However, for convenience we also
-host the charted (`.h5ad`) files - used in the notebooks - in the associated
+host the charted (`.h5ad`** files - used in the notebooks - in the associated
 Zenodo repository.
 
 
 ## Contributions
 ### Developers
-Author: Alma Andersson, you can reach me at almaan [at] kth [dot] se
+**Main developer**: Alma Andersson, you can reach me at almaan [at] kth [dot] se. But if you have questions pertaining to `eggplant` i recommend you to post a PR.
 ### Special Mentions
 We give a special shout-out to these people, who in one way or another have helped out with the improvement of this package:<br>
-NaN
-
-
+- <img src="images/bugcatcher.png" width=32px>Bug catcher:
+  - Be the first one to report a bug!
+- <img src="images/innovator.jpg" width=32px>Innovator:
+  - Be the first one to suggest a new feature that should be added to `eggplant`
+### Contributing
+Any contribution is more than welcome and you are strongly encouraged to submit
+PR incorporating new features or improving old ones. To keep things clean, we
+use [black](https://github.com/psf/black) formatting and
+[flake8](https://flake8.pycqa.org/en/latest/) to make sure that we adhere to the
+style guide. These checks are all taken care of by
+[pre-commit](https://pre-commit.com/) - which we strongly recommend you to
+install prior to any contributions.
