@@ -19,7 +19,7 @@ We here outline the structure of this repository:
 - `docs/` - contains the source code for the documentation, built using sphinx
 - `data-processing/` - contains scripts to download and covert data to the working format `h5ad` (AnnData files)
   - `{data-set}/download-data.sh` - will download data from the original source
-  - `{data-set}/make-h5ad.py` - will convert raw data into `h5ad` -files, execute with `python3 make-h5ad.py`
+  - `{data-set}/make-h5ad.py` - will convert raw data into `h5ad`-files and add landmark annotations, execute with `python3 make-h5ad.py`
 - `notebooks/` - contains notebooks outlining all the analysis presented in the manuscript
   - `synthetic-1-generation-and-analysis.ipynb` - generation and analysis of synthetic data set 1
   - `synthetic-2-generation-and-analysis.ipynb` - generation and analysis of synthetic data set 2
@@ -36,7 +36,16 @@ We here outline the structure of this repository:
 All the analyses presented in the main manuscript are found in the `notebooks` folder, see the structure section above for a clear account of what analysis each notebook (`.ipynb` file) is associated with.
 
 ## Data Access
-For the public data sets, we provide scripts to download the data from the original source together with scripts to convert these into the working format `.h5ad` (used in the notebooks). All the manual landmark annotations (from the charting process) are also added to these files.
+For the public data sets, we provide scripts to download the data from the
+original source together with scripts to convert these into the working format
+`.h5ad` (used in the notebooks). 
+
+We do not host any data in this repository, except for the landmark coordinates
+and the reference structures. This together with the provided scripts are
+sufficient to create all the charted data sets. However, for convenience we also
+host the charted (`.h5ad`) files - used in the notebooks - in the associated
+Zenodo repository.
+
 
 ## Contributions
 ### Developers
