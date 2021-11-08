@@ -6,5 +6,11 @@ dist/
 build/
 *.egg/
 *-info
+!.pre-commit-config.yaml
+!.flake8
 !.github
 misc/
+data/*/raw
+data/*/curated
+htmlcov/
+image-processing/
