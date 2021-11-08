@@ -139,7 +139,7 @@ def _visualize(
             vmax = [None] * len(counts)
 
     for k in range(len(counts)):
-        ordr = np.argsort(counts[k]).flatten()[::-1]
+        ordr = np.argsort(counts[k]).flatten()
         _sc = ax[k].scatter(
             crds[k][ordr, 0],
             crds[k][ordr, 1],
@@ -852,12 +852,19 @@ def visualize_sdea_results(
             s=marker_size,
         )
 
+        if sum(is_sig) > 0:
+            v_max = np.abs(vals["diff"][is_sig]).max()
+        else:
+            v_max = np.abs(vals["diff"][~is_sig]).max()
+
         _sc = ax[k].scatter(
             crd[is_sig, 0],
             crd[is_sig, 1],
             c=vals["diff"][is_sig],
             cmap=cmap,
             s=marker_size,
+            vmin=-v_max,
+            vmax=v_max,
         )
 
         pos_name, neg_name = comp.split("_vs_")

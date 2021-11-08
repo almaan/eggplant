@@ -1,0 +1,10 @@
+[flake8]
+max-line-length = 88
+max-complexity = 18
+select = B,C,E,F,W,T4,B9
+per-file-ignores =
+    test/*: F401, F841
+    eggplant/__init__.py: F401
+
+exclude = landmark-selection/*.py, docs/source/conf.py
+ignore = W503, C901, E203, E722, W605 

@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Union, Tuple, Any
+from typing import Dict, Optional, Union, Tuple, Any, List
 
 import anndata as ad
 import numpy as np
@@ -6,6 +6,8 @@ import numpy as np
 
 from scipy.stats import norm
 from collections import OrderedDict
+from numba import njit
+
 
 from . import models as m
 from . import utils as ut
@@ -176,3 +178,130 @@ def sdea(
             res[name] = dict(diff=diff, sig=comp)
 
     return res
+
+
+def test_region_wise_enrichment(
+    data: Union[ad.AnnData, "m.Reference"],
+    feature: str,
+    region_1: Union[str, int],
+    region_2: Union[str, int],
+    include_models: Union[List[str], str] = "composite",
+    col_name: str = "region",
+    feature_col: str = "feature",
+    alpha: float = 0.05,
+    n_permutations: Optional[int] = None,
+) -> Dict[str, Dict[str, Union[float, bool, str]]]:
+    """region-wise enrichment test
+
+    This function tests whether `feature` is higher expressed in `region_1`
+    compared to `region_2` using a permutation test.
+
+    :param data: object containing feature data
+    :type data: Union[ad.AnnData, "m.Reference"]
+    :param feature: feature to inspect
+    :type feature: str,
+    :param region_1: label of region 1
+    :type region_1: Union[str, int]
+    :param region_2: label of region 2
+    :type region_2: Union[str, int]
+    :param include_models: models to include, defaults to
+     composite
+    :type include_models: Union[List[str], str]
+    :param col_name: column name on adata.obs that indicates region label,
+     defaults to region
+    :type col_name: str
+    :param feature_col: column name in adata.var that indicates
+     feature, defaults to feature
+    :type feature_col: str
+    :param alpha: significance level, defaults to 0.01
+    :type alpha: float
+    :param n_permutations: number of permutations to perform.
+     1/alpha must be larger than n_permutations, otherwise
+     an exception will be raised. Defaults to 1 / alpha.
+    :type n_permutations: Optional[int]
+
+    :return: Dictionary with result of permutation test. The keys are:
+     - pvalue : caluclated pvalue
+     - is_sig : whether the result is considered significant or not
+     - feature : name of feature that was examined
+    :rtype: Dict[str, Dict[str, Union[float, bool, str]]]
+
+
+    """
+
+    if n_permutations is not None and alpha < 1 / n_permutations:
+        raise AssertionError("alpha cannot be less than 1 / n_permutations")
+    elif n_permutations is None:
+        if alpha <= 0.05:
+            n_permutations = 1000
+        elif alpha >= 0.01:
+            n_permutations = 5000
+        else:
+            n_permutations = int(1 / alpha)
+
+    if isinstance(data, m.Reference):
+        _adata = data.adata
+    elif isinstance(data, ad.AnnData):
+        _adata = data
+    else:
+        raise NotImplementedError(
+            "test not implemented for data type {}".format(type(data))
+        )
+
+    include_models = ut.obj_to_list(include_models)
+    adata = _adata[:, _adata.var[feature_col].values == feature]
+
+    model_names = adata.var["model"].values
+    vals_all = np.array(adata.X)
+    vals_1 = vals_all[adata.obs[col_name].values == region_1, :]
+    vals_2 = vals_all[adata.obs[col_name].values == region_2, :]
+    vals_12 = np.append(vals_1, vals_2)
+
+    n_1 = len(vals_1)
+    n_2 = len(vals_2)
+
+    @njit
+    def get_delta_mean(xs: np.ndarray, ys: np.ndarray):
+        n_x: int = len(xs)
+        n_y: int = len(ys)
+        k: int = 0
+        mean: float = 0
+
+        for ii in range(n_x):
+            for jj in range(n_y):
+                v1 = xs[ii]
+                v2 = ys[jj]
+                mean += v1 - v2
+                k += 1
+        mean /= k
+        return mean
+
+    res = dict()
+
+    for model in include_models:
+
+        model_idx = model_names == model
+        obs = get_delta_mean(
+            vals_1[:, model_idx].flatten(), vals_2[:, model_idx].flatten()
+        )
+
+        perm_res = np.zeros(n_permutations)
+
+        for perm in range(n_permutations):
+            np.random.shuffle(vals_12)
+            shuf_1 = vals_12[0:n_1]
+            shuf_2 = vals_12[n_1 : (n_1 + n_2)]
+            perm_res[perm] = get_delta_mean(shuf_1, shuf_2)
+
+        p_left = np.sum(perm_res <= min(obs, -obs))
+        p_right = np.sum(perm_res >= max(obs, -obs))
+        pval = (p_left + p_right) / n_permutations
+
+        is_sig = pval < alpha
+
+        res[model] = dict(
+            pval=round(pval, int(np.floor(np.log10(n_permutations)))),
+            is_sig=is_sig,
+            feature=feature,
+        )
+        return res

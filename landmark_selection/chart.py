@@ -32,19 +32,11 @@ def get_image_from_anndata(
 
     scalefactor = spatial[sample_name]["scalefactors"]["tissue_hires_scalef"]
 
-<<<<<<< HEAD
     if max(image.size) > 500:
         im_w, im_h = image.size
         im_w = float(im_w)
         im_h = float(im_h)
         sf = 500 / im_w
-=======
-    if max(image.size) > 300:
-        im_w, im_h = image.size
-        im_w = float(im_w)
-        im_h = float(im_h)
-        sf = 300 / im_w
->>>>>>> b2a5fae5b3cfde5e300cda76db5f585e701d4dfe
 
         resized_image = image.resize((int(im_w * sf), int(im_h * sf)), Image.ANTIALIAS)
 
@@ -67,11 +59,7 @@ def read_data(
         im_w, im_h = image.size
         im_w = float(im_w)
         im_h = float(im_h)
-<<<<<<< HEAD
-        scalefactor = 300 / im_w
-=======
-        scalefactor = 1000 / im_w
->>>>>>> b2a5fae5b3cfde5e300cda76db5f585e701d4dfe
+        scalefactor = 500 / im_w
         image = image.resize(
             (int(im_w * scalefactor), int(im_h * scalefactor)), Image.ANTIALIAS
         )
@@ -100,11 +88,6 @@ class MainWindow(QMainWindow):
         self.adata, self.im, self.scalefactor = read_data(self.path)
 
         self.im_w, self.im_h = self.im.size
-<<<<<<< HEAD
-=======
-        print(self.im_w, self.im_h)
->>>>>>> b2a5fae5b3cfde5e300cda76db5f585e701d4dfe
-
         self.margin = 100
         self.box_space = 150
 
@@ -133,15 +116,9 @@ class MainWindow(QMainWindow):
         pos = QMouseEvent.pos()
         if (
             pos.y() <= self.im_h + self.margin
-<<<<<<< HEAD
             and pos.y() >= self.margin / 2
             and pos.x() <= self.im_w + self.margin + self.margin / 2
             and pos.x() >= self.margin / self.margin
-=======
-            and pos.y() >= self.margin
-            and pos.x() <= self.im_w + self.margin
-            and pos.x() >= self.margin
->>>>>>> b2a5fae5b3cfde5e300cda76db5f585e701d4dfe
         ):
             self.points.append(pos)
             self.update()
@@ -176,28 +153,19 @@ class MainWindow(QMainWindow):
         undo_button = QPushButton("UNDO", self)
         undo_button.setGeometry(
             self.w / 2 - undo_button_w - button_margin / 2,
-<<<<<<< HEAD
             self.im_h + self.margin * 2,
-=======
-            self.im_h + 50,
->>>>>>> b2a5fae5b3cfde5e300cda76db5f585e701d4dfe
             undo_button_w,
             undo_button_h,
         )
         undo_button.clicked.connect(self.undopoints)
-
         save_button_h = 30
         save_button_w = 60
         save_button = QPushButton("SAVE", self)
         save_button.setGeometry(
-<<<<<<< HEAD
             self.w / 2 + button_margin / 2,
             self.im_h + self.margin * 2,
             save_button_w,
             save_button_h,
-=======
-            self.w / 2 + button_margin / 2, self.im_h + 50, save_button_w, save_button_h
->>>>>>> b2a5fae5b3cfde5e300cda76db5f585e701d4dfe
         )
 
         save_button.clicked.connect(self.savepoints)

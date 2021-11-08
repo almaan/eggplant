@@ -85,6 +85,7 @@ def _get_feature(
                     return x.obsm[key][feature].values
 
                 no_obsm_match = False
+                break
 
         if no_obsm_match:
             raise ValueError(f"Feature {feature} not found in any slot.")
