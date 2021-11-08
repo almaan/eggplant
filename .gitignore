@@ -6,8 +6,9 @@ dist/
 build/
 *.egg/
 *-info
+!.pre-commit-config.yaml
+!.flake8
 !.github
-./coverage-check.sh
 misc/
 data/
 htmlcov/
