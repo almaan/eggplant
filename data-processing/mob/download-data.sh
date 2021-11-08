@@ -2,8 +2,7 @@
 
 set -e
 
-OUT_DIR="../data/mob/raw/"
-
+OUT_DIR="../../data/mob/raw/"
 FOLDERS=( "images/full" "images/reduced" "counts" "tmats" )
 
 for f in ${FOLDERS[@]}; do

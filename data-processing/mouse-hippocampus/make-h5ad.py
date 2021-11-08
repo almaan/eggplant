@@ -36,15 +36,13 @@ del mta
 
 adata.obsm["spatial"] = adata.obs[["xcoord", "ycoord"]].values
 
-
-landmarks = (
-    (1345, 547),
-    (928, 888),
-    (730, 1470),
-    (875, 1916),
-    (1474, 870),
-    (1028, 1570),
+landmarks = pd.read_csv(
+    osp.join(DATA_DIR, "landmarks", "hippo-slide-seq.tsv"),
+    sep="\t",
+    header=0,
+    index_col=0,
 )
+
 n_lmk = len(landmarks)
 landmarks = pd.DataFrame(landmarks)
 landmarks.columns = [["x_coord", "y_coord"]]
@@ -72,4 +70,11 @@ for ii in range(len(crd)):
         keep.append(ii)
 keep = np.array(keep)
 adata = adata[keep, :]
+landmarks = pd.read_csv(
+    osp.join(DATA_DIR, "landmarks", "hippo-visium.tsv"),
+    sep="\t",
+    header=0,
+    index_col=0,
+)
+adata.uns["curated_landmarks"] = landmarks
 adata.write_h5ad(osp.join(CURATED_DIR, "hippo-visium.h5ad"))

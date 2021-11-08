@@ -14,21 +14,20 @@ def get_1k_diamter(crd):
     return min_d / 2
 
 
-# DATA_DIR = "../data/mob"
-DATA_DIR = "/tmp"
+DATA_DIR = "../../data/mob"
 RAW_DIR = osp.join(DATA_DIR, "raw")
-RAW_DIR = "/tmp"
 CNTDIR = osp.join(RAW_DIR, "counts")
 IMGDIR = osp.join(RAW_DIR, "images", "reduced")
 TMATDIR = osp.join(RAW_DIR, "tmats")
-# ODIR = osp.join(DATA_DIR,"curated")
-ODIR = "/tmp/curated"
+LMK_DIR = osp.join(DATA_DIR, "landmarks")
+ODIR = osp.join(DATA_DIR, "curated")
 
 if not osp.isdir(ODIR):
     os.mkdir(ODIR)
 
 for sample in range(1, 13):
     name = "Rep_{}".format(sample)
+    new_name = "Rep{}_MOB".format(sample)
     print("[INFO] : Processing {}".format(name))
     df = pd.read_csv(osp.join(CNTDIR, name + ".tsv"), sep="\t", header=0, index_col=0)
 
@@ -66,17 +65,26 @@ for sample in range(1, 13):
         tissue_hires_scalef=0.21,
         spot_diameter_fullres=spot_diameter,
     )
+
+    landmarks = pd.read_csv(
+        osp.join(LMK_DIR, new_name + ".tsv"),
+        sep="\t",
+        header=0,
+        index_col=0,
+    )
+
     uns = dict(
         spatial={
             name: dict(
                 images=images,
                 scalefactors=scalefactors,
                 metadata=metadata,
-            )
-        }
+            ),
+        },
+        charted_landmarks=landmarks,
     )
 
     adata = ad.AnnData(df.values, var=var, obs=obs, uns=uns)
     adata.obsm["spatial"] = ncrd
 
-    adata.write_h5ad(osp.join(ODIR, "Rep{}_MOB.h5ad".format(sample)))
+    adata.write_h5ad(osp.join(ODIR, new_name + ".h5ad"))
