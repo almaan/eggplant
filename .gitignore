@@ -10,7 +10,8 @@ build/
 !.flake8
 !.github
 misc/
-data/*/{raw,curated}
+data/*/raw
+data/*/curated
 !./data/*/{landmarks,references}
 htmlcov/
 image-processing/
