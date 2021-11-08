@@ -12,7 +12,6 @@ build/
 !.github
 misc/
 data/*/raw
-data/*/curated
 htmlcov/
 image-processing/
 docs/rtd-requirements.txt

@@ -32,7 +32,9 @@ We here outline the structure of this repository:
 - `conda/eggplant.yml` - a minimal conda environment. Using this you should be able to execute all notebooks found in `notebooks/`
 
 ## Reproducibility
-All the analyses presented in the main manuscript are found in the `notebooks` folder, see the structure section above for a clear account of what analysis each notebook (`.ipynb` file) is associated with.
+All the analyses presented in the main manuscript are found in the `notebooks`
+folder, see the structure section above for a clear account of what analysis
+each notebook (`.ipynb` file) is associated with.
 
 ## Data Access
 For the public data sets, we provide scripts to download the data from the
@@ -44,6 +46,14 @@ and the reference structures. This together with the provided scripts are
 sufficient to create all the charted data sets. However, for convenience we also
 host the charted files (`.h5ad` files) used in the notebooks - in the associated
 Zenodo repository.
+
+To get the charted `.h5ad` files, visit the Zenodo repository and extract the
+content of `curated.zip` into a folder called `data` that is located at the same
+directory level as the root directory of the cloned github repository. For easy
+access, we use symlinks in the notebook data folder to these files; if you're
+working on a Windows machine you might experience some issues with this and
+probably want to replace these symlinks with the actual files or a shortcut to
+them, on UNIX-based systems it should work without any modifications.
 
 
 ## Contributions
