@@ -1,0 +1,4 @@
+sphinx-paramlinks
+nbsphinx
+sphinx-autodocgen
+sphinxcontrib-bibtex

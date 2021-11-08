@@ -2,6 +2,10 @@
 
 import setuptools
 
+with open("requirements.txt") as fr:
+    reqs = fr.readlines()
+reqs = [r.rstrip("\n") for r in reqs]
+
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
@@ -21,15 +25,5 @@ setuptools.setup(
         "Operating System :: Tested on Linux",
     ],
     python_requires=">=3.7",
-    install_requires=[
-        "numpy>=1.19.0",
-        "pandas>=1.0.0",
-        "anndata>=0.7.5",
-        "matplotlib>=3.3.3",
-        "scanpy>=1.5.0",
-        "torch>=1.8.1",
-        "gpytorch>=1.4.2",
-        "squidpy>=1.1.0",
-        "morphops>=0.1.12",
-    ],
+    install_requires=reqs,
 )
