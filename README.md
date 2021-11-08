@@ -42,7 +42,7 @@ original source together with scripts to convert these into the working format
 We do not host any data in this repository, except for the landmark coordinates
 and the reference structures. This together with the provided scripts are
 sufficient to create all the charted data sets. However, for convenience we also
-host the charted (`.h5ad`** files - used in the notebooks - in the associated
+host the charted files (`.h5ad` files) used in the notebooks - in the associated
 Zenodo repository.
 
 
