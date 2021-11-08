@@ -7,3 +7,6 @@ build/
 *.egg/
 *-info
 !.github
+./coverage-check.sh
+misc/
+data/
