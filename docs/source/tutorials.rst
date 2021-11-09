@@ -1,5 +1,6 @@
 Tutorials
 =========
 
-* :ref:`notebooks/mob-analysis.ipynb`
-* :ref:`notebooks/human-developmental-heart-analysis.ipynb`
+* :ref:`notebooks/mouse-olfactory-bulb-analysis.ipynb`
+* :ref:`notebooks/estimate-number-of-landmarks.ipynb`
+* :ref:`notebooks/spatiotemporal.ipynb`

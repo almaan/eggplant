@@ -18,7 +18,10 @@ Welcome to eggplant's documentation!
    :maxdepth: 1
    :caption: Examples
 
-   notebooks/mob-full-analysis.ipynb
+   notebooks/mouse-olfactory-bulb-analysis.ipynb
+   notebooks/estimate-number-of-landmarks.ipynb
+   notebooks/spatiotemporal.ipynb
+   
 
 Indices and tables
 ==================
