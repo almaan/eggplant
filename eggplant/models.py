@@ -66,8 +66,8 @@ class GPModel(gp.models.ExactGP):
             else:
                 self.landmark_names = landmark_names
 
-        self.ldists = t.tensor(landmark_distances)
-        self.features = t.tensor(feature_values)
+        self.ldists = ut._to_tensor(landmark_distances)
+        self.features = ut._to_tensor(feature_values)
 
         self.ldists = self.ldists.to(device=self.device)
         self.features = self.features.to(device=self.device)

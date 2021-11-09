@@ -29,7 +29,7 @@ by doing:
    # activate conda environment
    conda active
    # create a conda enviroment from our provided file 
-   conda env create -f conda/eggplant.yml
+   conda env create -f conda/eggplant.yaml
    # activate the environment
    conda activate eggplant
 
