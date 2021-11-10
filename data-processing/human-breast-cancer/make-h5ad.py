@@ -7,7 +7,7 @@ import pandas as pd
 DATA_DIR = "../../../data/human-breast-cancer"
 RAW_DIR = osp.join(DATA_DIR, "raw")
 CURATED_DIR = osp.join(DATA_DIR, "curated")
-LMK_DIR = "../../data/landmarks"
+LMK_DIR = "../../data/human-breast-cancer/landmarks/"
 
 if not osp.isdir(CURATED_DIR):
     os.mkdir(CURATED_DIR)

@@ -37,7 +37,7 @@ del mta
 adata.obsm["spatial"] = adata.obs[["xcoord", "ycoord"]].values
 
 landmarks = pd.read_csv(
-    osp.join("../../data", "landmarks", "hippo-slide-seq.tsv"),
+    osp.join("../../data", "mouse-hippocampus", "landmarks", "hippo-slide-seq.tsv"),
     sep="\t",
     header=0,
     index_col=0,
@@ -71,7 +71,7 @@ for ii in range(len(crd)):
 keep = np.array(keep)
 adata = adata[keep, :]
 landmarks = pd.read_csv(
-    osp.join("../../data", "landmarks", "hippo-visium.tsv"),
+    osp.join("../../data", "mouse-hippocampus", "landmarks", "hippo-visium.tsv"),
     sep="\t",
     header=0,
     index_col=0,
