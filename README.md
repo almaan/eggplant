@@ -1,5 +1,8 @@
 [![codecov](https://codecov.io/gh/almaan/eggplant/branch/publish/graph/badge.svg?token=NFJWGVK56D)](https://codecov.io/gh/almaan/eggplant)
 [![Documentation Status](https://readthedocs.org/projects/spatial-eggplant/badge/?version=latest)](https://spatial-eggplant.readthedocs.io/en/latest/?badge=latest)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5659105.svg)](https://doi.org/10.5281/zenodo.5659105)
+
+
 
 # <img src="images/logo.png" width=400px> 
 
@@ -27,6 +30,7 @@ We here outline the structure of this repository:
   - `human-developmental-heart.ipynb` - analysis of the human developmental heart (Visium data, 7 samples)
   - `human-breast-cancer.ipynb` - analysis of the human breast cancer data set, includes transfer of proportion values (Visium data, 2 samples)
   - `show-reference.ipynb` - notebook to generate visualization of charted data and references, used for main and supplementary figures
+  - `estimate-number-of-landmarks.ipynb` - notebook that shows how the lower bound for the number of landmarks to be used in each analysis was estimated.
 - `test/` - unit tests
 - `landmark-selection/chart.py` - a (very basic) script for landmark selection. This is in experimental mode and not considered as a part of the `eggplant` package.
 - `conda/eggplant.yml` - a minimal conda environment. Using this you should be able to execute all notebooks found in `notebooks/`
@@ -45,7 +49,7 @@ We do not host any data in this repository, except for the landmark coordinates
 and the reference structures. This together with the provided scripts are
 sufficient to create all the charted data sets. However, for convenience we also
 host the charted files (`.h5ad` files) used in the notebooks - in the associated
-Zenodo repository.
+[Zenodo](https://doi.org/10.5281/zenodo.5659093) repository.
 
 To get the charted `.h5ad` files, visit the Zenodo repository and extract the
 content of `curated.zip` into a folder called `data` that is located at the same
@@ -58,18 +62,30 @@ them, on UNIX-based systems it should work without any modifications.
 
 ## Contributions
 ### Developers
-**Main developer**: Alma Andersson, you can reach me at almaan [at] kth [dot] se. But if you have questions pertaining to `eggplant` i recommend you to post a PR.
+**Main developer**: Alma Andersson, you can reach me at almaan [at] kth [dot] se. But if you have questions pertaining to `eggplant` i recommend you to post an issue.
 ### Special Mentions
 We give a special shout-out to these people, who in one way or another have helped out with the improvement of this package:<br>
-- <img src="images/bugcatcher.png" width=32px>Bug catcher:
-  - Be the first one to report a bug!
-- <img src="images/innovator.jpg" width=32px>Innovator:
+- <img src="images/bugcatcher.png" width=32px>Bug catchers:
+  - Be the first one to report a bug! (hopefully this list remains short)
+- <img src="images/innovator.jpg" width=32px>Innovators:
   - Be the first one to suggest a new feature that should be added to `eggplant`
+
 ### Contributing
 Any contribution is more than welcome and you are strongly encouraged to submit
-PR incorporating new features or improving old ones. To keep things clean, we
-use [black](https://github.com/psf/black) formatting and
-[flake8](https://flake8.pycqa.org/en/latest/) to make sure that we adhere to the
-style guide. These checks are all taken care of by
+PR incorporating new features or improving old ones. If you experience issues or
+discover a bug, please post an issue.
+
+### Formatting
+To keep things clean, we use [black](https://github.com/psf/black) formatting
+and [flake8](https://flake8.pycqa.org/en/latest/) to make sure that we adhere to
+the style guide. These checks are all taken care of by
 [pre-commit](https://pre-commit.com/) - which we strongly recommend you to
 install prior to any contributions.
+### Tests
+To make sure that the code works as intended and to lower the risk of
+introducing bugs into it, we employ unit testing. If you're making a major
+contribution please consider writing your own *test* and add this to any of the
+existing files in the `test` folder, alternatively add a new file. The test
+suite we're using is the standard `unittest` module. For codecov, the
+[coverage](https://coverage.readthedocs.io/en/6.1.1/) package is used; we aim to
+have a codecov > 80%.
