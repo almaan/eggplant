@@ -8,3 +8,6 @@ torch>=1.8.1
 gpytorch>=1.4.2
 squidpy>=1.1.0
 morphops>=0.1.12
+tqdm
+scipy
+kneed
