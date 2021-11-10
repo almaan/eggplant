@@ -1,0 +1,3 @@
+include pypi-README.md
+include LICENSE
+include requirements.txt

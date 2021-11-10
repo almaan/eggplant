@@ -55,11 +55,11 @@ heavier testing, you could also run the unit tests, done by executing:
 
 PIP
 ~~~
-You will soon be able to install ``eggplant`` via ``pip``, by executing the command:
+You can also install ``eggplant`` via ``pip``, by executing the command:
 
 .. code-block:: console
 
-                python3 -m pip eggplant
+                python3 -m pip spatial-eggplant
 
-This method of installation will be available upon the first package release
-(soon to come).
+However, we **recommend** to use the GitHub alternative, as this will give you
+the most up-to-date version.
