@@ -81,7 +81,7 @@ for sample in range(1, 13):
                 metadata=metadata,
             ),
         },
-        charted_landmarks=landmarks,
+        curated_landmarks=landmarks,
     )
 
     adata = ad.AnnData(df.values, var=var, obs=obs, uns=uns)
