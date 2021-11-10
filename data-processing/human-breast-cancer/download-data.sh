@@ -1,7 +1,6 @@
 #!/usr/bin/bash
 
-OUT_DIR="../../data/human-breast-cancer/raw"
-OUT_DIR="/tmp/human-breast-cancer/raw"
+OUT_DIR="../../../data/human-breast-cancer/raw"
 
 for ii in bcA bcB; do
     if [ ! -d $OUT_DIR/$ii ]; then

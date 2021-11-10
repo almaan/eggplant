@@ -4,11 +4,10 @@ import scanpy as sc
 import pandas as pd
 
 
-DATA_DIR = "../../data/human-breast-cancer"
-DATA_DIR = "/tmp/human-breast-cancer"
+DATA_DIR = "../../../data/human-breast-cancer"
 RAW_DIR = osp.join(DATA_DIR, "raw")
 CURATED_DIR = osp.join(DATA_DIR, "curated")
-LMK_DIR = osp.join(DATA_DIR, "landmarks")
+LMK_DIR = "../../data/landmarks"
 
 if not osp.isdir(CURATED_DIR):
     os.mkdir(CURATED_DIR)

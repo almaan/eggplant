@@ -14,16 +14,16 @@ def get_1k_diamter(crd):
     return min_d / 2
 
 
-DATA_DIR = "../../data/mob"
+DATA_DIR = "../../../data/mob"
 RAW_DIR = osp.join(DATA_DIR, "raw")
 CNTDIR = osp.join(RAW_DIR, "counts")
 IMGDIR = osp.join(RAW_DIR, "images", "reduced")
 TMATDIR = osp.join(RAW_DIR, "tmats")
-LMK_DIR = osp.join(DATA_DIR, "landmarks")
 ODIR = osp.join(DATA_DIR, "curated")
+LMK_DIR = "../../data/mob/landmarks"
 
 if not osp.isdir(ODIR):
-    os.mkdir(ODIR)
+    os.makedirs(ODIR)
 
 for sample in range(1, 13):
     name = "Rep_{}".format(sample)
@@ -32,11 +32,11 @@ for sample in range(1, 13):
     df = pd.read_csv(osp.join(CNTDIR, name + ".tsv"), sep="\t", header=0, index_col=0)
 
     with open(osp.join(TMATDIR, name + ".txt"), "r+") as f:
-        tmat = (
-            np.array(f.readlines()[0].replace("\n", "").split(" "))
-            .reshape(3, 3)
-            .astype(np.float32)
-        )
+
+        tmat = f.readlines()[0].replace("\n", "").split(" ")
+        tmat = np.array(tmat)
+
+        tmat = tmat.reshape(3, 3).astype(np.float32)
 
     var = pd.DataFrame(df.columns.values, index=df.columns, columns=["gene"])
     obs = pd.DataFrame(

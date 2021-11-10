@@ -5,7 +5,7 @@ import scanpy as sc
 import numpy as np
 from scipy.sparse import csr_matrix
 
-DATA_DIR = "../../data/mouse-hippocampus/"
+DATA_DIR = "../../../data/mouse-hippocampus/"
 RAW_DIR = osp.join(DATA_DIR, "raw")
 CURATED_DIR = osp.join(DATA_DIR, "curated")
 
@@ -37,7 +37,7 @@ del mta
 adata.obsm["spatial"] = adata.obs[["xcoord", "ycoord"]].values
 
 landmarks = pd.read_csv(
-    osp.join(DATA_DIR, "landmarks", "hippo-slide-seq.tsv"),
+    osp.join("../../data", "landmarks", "hippo-slide-seq.tsv"),
     sep="\t",
     header=0,
     index_col=0,
@@ -71,7 +71,7 @@ for ii in range(len(crd)):
 keep = np.array(keep)
 adata = adata[keep, :]
 landmarks = pd.read_csv(
-    osp.join(DATA_DIR, "landmarks", "hippo-visium.tsv"),
+    osp.join("../../data", "landmarks", "hippo-visium.tsv"),
     sep="\t",
     header=0,
     index_col=0,

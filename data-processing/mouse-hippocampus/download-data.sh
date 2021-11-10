@@ -1,7 +1,6 @@
 #!/usr/bin/bash
 
-OUT_DIR="../../data/mouse-hippocampus/raw"
-OUT_DIR="/tmp/mouse-hippocampus/raw"
+OUT_DIR="../../../data/mouse-hippocampus/raw"
 if [ ! -d $OUT_DIR ]; then
     mkdir -p $OUT_DIR
 fi
