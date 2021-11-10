@@ -16,9 +16,13 @@ reference representing a **Common Coordinate Framework** (CCF).
 We refer to our <a href="https://spatial-eggplant.readthedocs.io/en/latest/install.html">readthedocs</a> page for instructions regarding installation and examples of use.
 
 ## Structure
-We here outline the structure of this repository:
+This section outlines the (relevant) structure of the repository:
 - `eggplant/` - contains the source code of the Python package
-- `docs/` - contains the source code for the documentation, built using sphinx
+- `data/` - holds the data analyzed in the manuscript (and thus the notebooks included in this repository)
+  - `{data-set}/landmarks/` - contains the landmark coordinates for all samples in the associated data set
+  - `{data-set}/references` - contains the reference image used for the associated data set
+  - `{data-set}/curated` - is a symbolic link (symlink) pointing to a directory that holds the curated (charted) data of the associated data set. See the [Data Access](#data-access) section below for more information.
+  - `human-breast-cancer/stereoscope/` - contains the `stereoscope` proportion estimates for the two breast cancer samples
 - `data-processing/` - contains scripts to download and covert data to the working format `h5ad` (AnnData files)
   - `{data-set}/download-data.sh` - will download data from the original source
   - `{data-set}/make-h5ad.py` - will convert raw data into `h5ad`-files and add landmark annotations, execute with `python3 make-h5ad.py`
@@ -33,10 +37,11 @@ We here outline the structure of this repository:
   - `estimate-number-of-landmarks.ipynb` - notebook that shows how the lower bound for the number of landmarks to be used in each analysis was estimated.
 - `test/` - unit tests
 - `landmark-selection/chart.py` - a (very basic) script for landmark selection. This is in experimental mode and not considered as a part of the `eggplant` package.
-- `conda/eggplant.yml` - a minimal conda environment. Using this you should be able to execute all notebooks found in `notebooks/`
+- `conda/eggplant.yaml` - a minimal conda environment. Using this you should be able to execute all notebooks found in `notebooks/`
+- `docs/`  - contains the source code for the [Documentation](https://spatial-eggplant.readthedocs.io/en/latest/). The documentation is built using [Sphinx](https://www.sphinx-doc.org/en/master/) and is hosted on [ReadTheDocs](https://readthedocs.org/).
 
 ## Reproducibility
-All the analyses presented in the main manuscript are found in the `notebooks`
+All the analyses presented in the main manuscript together with their results are found in the `notebooks`
 folder, see the structure section above for a clear account of what analysis
 each notebook (`.ipynb` file) is associated with.
 
@@ -52,17 +57,27 @@ host the charted files (`.h5ad` files) used in the notebooks - in the associated
 [Zenodo](https://doi.org/10.5281/zenodo.5659093) repository.
 
 To get the charted `.h5ad` files, visit the Zenodo repository and extract the
-content of `eggplant-data.zip` into a folder called `data` that is located at the same
-directory level as the root directory of the cloned github repository. For easy
-access, we use symlinks in the notebook data folder to these files; if you're
-working on a Windows machine you might experience some issues with this and
-probably want to replace these symlinks with the actual files or a shortcut to
-them, on UNIX-based systems it should work without any modifications.
+content of `eggplant-data.zip` into a folder called `data` that is located at
+the same directory level as the root directory of the cloned github repository.
+Meaning that (from within the root folder) the following should be true:
+
+```sh
+$> ls ../ -1
+eggplant
+data
+```
+
+For easy access, we use symlinks in the root `data` folder; if you're working on
+a Windows machine you might experience some issues with this and probably want
+to replace these symlinks with the Windows
+[equivalent](https://www.howtogeek.com/howto/16226/complete-guide-to-symbolic-links-symlinks-on-windows-or-linux/)
+or just move the files into the root's data folder, on UNIX-based systems it
+should work without any need for modifications.
 
 
 ## Contributions
 ### Developers
-**Main developer**: Alma Andersson, you can reach me at almaan [at] kth [dot] se. But if you have questions pertaining to `eggplant` i recommend you to post an issue.
+**Main developer**: Alma Andersson, you can reach me at almaan [at] kth [dot] se. However, if you have questions pertaining to `eggplant` I recommend you to post an issue here on GitHub.
 ### Special Mentions
 We give a special shout-out to these people, who in one way or another have helped out with the improvement of this package:<br>
 - <img src="images/bugcatcher.png" width=32px>Bug catchers:
