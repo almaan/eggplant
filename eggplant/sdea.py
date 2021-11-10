@@ -280,7 +280,7 @@ def test_region_wise_enrichment(
 
     for model in include_models:
 
-        model_idx = model_names == model
+        model_idx = np.argmax(model_names == model)
         obs = get_delta_mean(
             vals_1[:, model_idx].flatten(), vals_2[:, model_idx].flatten()
         )
@@ -293,9 +293,9 @@ def test_region_wise_enrichment(
             shuf_2 = vals_12[n_1 : (n_1 + n_2)]
             perm_res[perm] = get_delta_mean(shuf_1, shuf_2)
 
-        p_left = np.sum(perm_res <= min(obs, -obs))
-        p_right = np.sum(perm_res >= max(obs, -obs))
-        pval = (p_left + p_right) / n_permutations
+        p_1 = np.sum(perm_res <= obs)
+        p_2 = np.sum(perm_res >= obs)
+        pval = 2 * min(p_1, p_2) / n_permutations
 
         is_sig = pval < alpha
 
