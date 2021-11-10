@@ -52,7 +52,7 @@ host the charted files (`.h5ad` files) used in the notebooks - in the associated
 [Zenodo](https://doi.org/10.5281/zenodo.5659093) repository.
 
 To get the charted `.h5ad` files, visit the Zenodo repository and extract the
-content of `curated.zip` into a folder called `data` that is located at the same
+content of `eggplant-data.zip` into a folder called `data` that is located at the same
 directory level as the root directory of the cloned github repository. For easy
 access, we use symlinks in the notebook data folder to these files; if you're
 working on a Windows machine you might experience some issues with this and
