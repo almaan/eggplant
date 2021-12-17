@@ -14,6 +14,10 @@ reference representing a **Common Coordinate Framework** (CCF).
 
 ##  Installation and Tutorials
 We refer to our <a href="https://spatial-eggplant.readthedocs.io/en/latest/install.html">readthedocs</a> page for instructions regarding installation and examples of use.
+<br>
+The estimated time for installation is **less than one minute**.<br>
+<br>
+The software has been tested on a Linux (Fedora 29) and macOS (Catalina) machine.
 
 ## Structure
 This section outlines the (relevant) structure of the repository:
