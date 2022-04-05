@@ -1,9 +1,24 @@
 [tool.black]
+include = '\.pyi?$'
+exclude = '''
+(
+  /(
+      \.eggs
+    | \.git
+    | \.hg
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+  )/
+
+)
+'''
 
 [build-system]
 requires = [
     "setuptools>=42",
     "wheel",
-    "pathlib",
 ]
 build-backend = "setuptools.build_meta"
