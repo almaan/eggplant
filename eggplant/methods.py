@@ -405,19 +405,19 @@ def fa_transfer_to_reference(
         return_object.update(return_object_single)
 
     recons_data = []
+    recons_variance = []
     recons_feature = []
     recons_model = []
     model_names = set(reference.adata.var.model)
     for model_name in model_names:
-        obj_vals = reference.adata.X[:, reference.adata.var.model.values == model_name]
-        recons_data.append(
-            np.dot(
-                obj_vals,
-                objs[objs_order[model_name]]
-                .varm["PCs"][:, 0 : n_comps_sel_list[model_name]]
-                .T,
-            )
-        )
+        pcs = objs[objs_order[model_name]].varm["PCs"]
+        pcs = pcs[:, 0 : n_comps_sel_list[model_name]].T
+
+        is_model = reference.adata.var.model.values == model_name
+        obj_vals = reference.adata.X[:, is_model]
+        recons_data.append(np.dot(obj_vals, pcs))
+        new_variance = np.dot(reference.adata.layers["var"][:, is_model], pcs ** 2)
+        recons_variance.append(new_variance)
         recons_feature += list(objs[objs_order[model_name]].var.index)
         recons_model += [model_name] * objs[objs_order[model_name]].var.shape[0]
 
@@ -430,12 +430,14 @@ def fa_transfer_to_reference(
     ordr = np.argsort(recons_var.index.values)
     recons_var = recons_var.iloc[ordr, :]
     recons_data = np.concatenate(recons_data, axis=1)[:, ordr]
+    recons_variance = np.concatenate(recons_variance, axis=1)[:, ordr]
     obsm = reference.adata.obsm
     reference.adata = ad.AnnData(
         recons_data,
         var=recons_var,
         obs=reference.adata.obs,
     )
+    reference.adata.layers["var"] = recons_variance
     reference.adata.obsm = obsm
 
     return return_object

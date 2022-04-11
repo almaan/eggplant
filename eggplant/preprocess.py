@@ -451,7 +451,9 @@ def intersect_features(
             inter_features = inter_features.intersection(set(adata.var.index.values))
 
     for key, adata in _adatas.items():
-        keep_features = list(map(lambda x: x in inter_features, adata.var.index.values))
+        keep_features = np.array(
+            list(map(lambda x: x in inter_features, adata.var.index.values))
+        )
         adatas[key] = adatas[key][:, keep_features]
 
 
@@ -523,6 +525,9 @@ def default_normalization(
 
 
     """
+
+    if min_cells < 1:
+        min_cells = int(adata.shape[0] * min_cells)
 
     sc.pp.filter_genes(adata, min_cells=min_cells)
     sc.pp.normalize_total(
