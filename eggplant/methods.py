@@ -283,8 +283,8 @@ def fa_transfer_to_reference(
     this representation, and then reconstruct the original data. This
     significantly reduces the number of features that need to be transferred to
     the reference, but comes at the cost of only an *approximate*
-    representation, which depends on the specified variance_threshold parameter;
-    the higher the value, the more accurate the reconstruction.
+    representation, which depends on either of the specified variance_threshold
+    or n_components parameters.
 
     :param adatas: AnnData objects holding data to transfer
     :type adatas: Union[ad.AnnData, List[ad.AnnData], Dict[str, ad.AnnData]]
