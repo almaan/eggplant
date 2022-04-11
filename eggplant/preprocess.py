@@ -14,7 +14,7 @@ from PIL import Image
 from matplotlib import colors
 from sklearn.cluster import KMeans
 
-from typing import List, Union, Optional, Tuple
+from typing import List, Union, Optional, Tuple, Dict
 import numbers
 
 from . import models as m
@@ -435,11 +435,60 @@ def spatial_smoothing(
     adata.layers["smoothed"] = new_X
 
 
+def intersect_features(
+    adatas: Union[List[ad.AnnData], Dict[str, ad.AnnData]],
+) -> None:
+
+    if isinstance(adatas, list):
+        _adatas = dict(enumerate(adatas))
+    else:
+        _adatas = adatas
+
+    for k, adata in enumerate(_adatas.values()):
+        if k == 0:
+            inter_features = set(adata.var.index.values)
+        else:
+            inter_features = inter_features.intersection(set(adata.var.index.values))
+
+    for key, adata in _adatas.items():
+        keep_features = np.array(
+            list(map(lambda x: x in inter_features, adata.var.index.values))
+        )
+        adatas[key] = adatas[key][:, keep_features]
+
+
+def joint_highly_variable_genes(
+    adatas: Union[List[ad.AnnData], Dict[str, ad.AnnData]],
+    **kwargs,
+) -> None:
+
+    if isinstance(adatas, list):
+        _adatas = dict(enumerate(adatas))
+    else:
+        _adatas = adatas
+
+    joint_adatas = ad.concat(_adatas, label="origin", join="inner")
+    sc.pp.log1p(joint_adatas)
+    sc.pp.highly_variable_genes(joint_adatas, **kwargs)
+
+    hvg_genes = joint_adatas.var.index.values[
+        joint_adatas.var["highly_variable"].values
+    ]
+    for key in _adatas.keys():
+        is_hvg = list(map(lambda x: x in hvg_genes, adatas[key].var.index.values))
+        adatas[key].var["highly_variable"] = np.zeros(adatas[key].shape[1]).astype(bool)
+        adatas[key].var.loc[is_hvg, "highly_variable"] = True
+
+    return adatas
+
+
 def default_normalization(
     adata: ad.AnnData,
     min_cells: float = 0.1,
     total_counts: float = 1e4,
     exclude_highly_expressed: bool = False,
+    compute_highly_variable_genes: bool = False,
+    n_top_genes: int = 2000,
 ) -> None:
     """default normalization recipe
 
@@ -477,9 +526,14 @@ def default_normalization(
 
     """
 
+    if min_cells < 1:
+        min_cells = int(adata.shape[0] * min_cells)
+
     sc.pp.filter_genes(adata, min_cells=min_cells)
     sc.pp.normalize_total(
         adata, total_counts, exclude_highly_expressed=exclude_highly_expressed
     )
     sc.pp.log1p(adata)
+    if compute_highly_variable_genes:
+        sc.pp.highly_variable_genes(adata, n_top_genes=n_top_genes)
     sc.pp.scale(adata)

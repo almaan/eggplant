@@ -13,7 +13,7 @@ information from multiple spatial-transcriptomics data sets to a single
 reference representing a **Common Coordinate Framework** (CCF).
 
 ##  Installation and Tutorials
-We refer to our <a href="https://spatial-eggplant.readthedocs.io/en/latest/install.html">readthedocs</a> page for instructions regarding installation and examples of use.
+We refer to our <a href="https://spatial-eggplant.readthedocs.io/en/latest/install.html">readthedocs</a> page for instructions regarding installation and examples of use.<br>
 <br>
 The estimated time for installation is **less than one minute**.<br>
 <br>

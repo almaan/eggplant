@@ -3,8 +3,10 @@ from contextlib import nullcontext
 from typing import Dict, List, Optional, Union, Tuple
 
 import anndata as ad
+import scanpy as sc
 import gpytorch as gp
 import numpy as np
+import pandas as pd
 from scipy.spatial.distance import cdist
 import torch as t
 import tqdm
@@ -190,7 +192,6 @@ def transfer_to_reference(
 
     for k, _adata in enumerate(adatas):
         adata = ut.subsample(_adata, keep=subsample[k])
-
         model_name = names[k] if names is not None else f"Model_{k}"
 
         landmark_distances = adata.obsm["landmark_distances"]
@@ -201,10 +202,10 @@ def transfer_to_reference(
             feature_values = get_feature(adata)
 
             if verbose:
-                print(
-                    msg.format(model_name, feature, k * n_features + f + 1, n_total),
-                    flush=True,
+                print_msg = msg.format(
+                    model_name, feature, k * n_features + f + 1, n_total
                 )
+                print(print_msg, flush=True)
 
             model = m.GPModel(
                 ut._to_tensor(landmark_distances),
@@ -252,6 +253,192 @@ def transfer_to_reference(
 
     if len(return_object) == 1:
         return_object = list(return_object.values())[0]
+
+    return return_object
+
+
+def fa_transfer_to_reference(
+    adatas: Union[ad.AnnData, List[ad.AnnData], Dict[str, ad.AnnData]],
+    reference: m.Reference,
+    variance_threshold: float = 0.3,
+    n_components: Optional[int] = None,
+    use_highly_variable: bool = True,
+    layer: Optional[str] = None,
+    device: Literal["cpu", "gpu"] = "cpu",
+    n_epochs: int = 1000,
+    learning_rate: float = 0.01,
+    subsample: Optional[Union[float, int]] = None,
+    verbose: bool = False,
+    return_models: bool = False,
+    return_losses: bool = True,
+    max_cg_iterations: int = 1000,
+    meta_key: str = "meta",
+    **kwargs,
+) -> Dict[str, Union[List["m.GPModel"], List[np.ndarray]]]:
+    """fast approximate transfer of observed data to a reference
+
+    similar to :paramref:`~eggplant.methods.transfer_to_reference`, but designed
+    for *fast approximate* transfer of the full set of features. To speed up the
+    transfer process we project the data into a low-dimensional space, transfer
+    this representation, and then reconstruct the original data. This
+    significantly reduces the number of features that need to be transferred to
+    the reference, but comes at the cost of only an *approximate*
+    representation, which depends on either of the specified variance_threshold
+    or n_components parameters.
+
+    :param adatas: AnnData objects holding data to transfer
+    :type adatas: Union[ad.AnnData, List[ad.AnnData], Dict[str, ad.AnnData]]
+    :param reference: reference to transfer data to
+    :type reference: m.Reference
+    :param variance_threshold: fraction of variance that principal components
+     should explain
+    :type variance_threshold: float
+    :param n_components: use instead of variance_threshold. If specified,
+     exactly n_components will be used.
+    :type n_components: Optional[int]
+    :param use_highly_variable: only use highly_variable_genes to
+     compute the principal components. Default is True.
+    :type use_highly_variable: bool
+    :param layer: which layer to extract data from, defaults to raw
+    :type layer: Optional[str]
+    :param device: device to use for computations, defaults to "cpu"
+    :type device: Litreal["cpu","gpu"]
+    :param n_epochs: number of epochs to use, defaults to 1000
+    :type n_epochs: int
+    :param learning_rate: learning rate, defaults to 0.01
+    :type learning_rate: float
+    :param subsample: if <= 1 then interpreted of fraction of observations,
+    to keep. If > 1 interpreted as number of observations to keep
+    in sumbsampling, defaults to None (no sumbsampling)
+    :type subsample: Optional[Union[float, int]] = None,
+    :param verbose: set to true to use verbose mode, defaults to True
+    :type verbose: bool
+    :param return_models: set to True to return fitted models, defaults to False
+    :type return_models: bool
+    :param return_losses: return loss history of each model, defaults to True
+    :type return_losses: bool
+    :param max_cg_iterations: The maximum number of conjugate gradient iterations to
+    perform (when computing matrix solves). A higher value rarely results in
+    more accurate solves – instead, lower the CG tolerance
+    (from GPyTorch documentation), defaults to 1000.
+    :type max_cg_iterations: int = 1000,
+    :param meta_key: key in uns slot that holds additional meta info
+    :type meta_key: str
+    """
+
+    n_comps_start = 200
+    n_comps_increment = 50
+    return_object = dict()
+
+    if isinstance(adatas, dict):
+        names = list(adatas.keys())
+        objs = list(adatas.values())
+    elif isinstance(adatas, list):
+        names = None
+        objs = adatas
+    else:
+        names = None
+        objs = [adatas]
+
+    objs_order = dict()
+    n_comps_sel_list = dict()
+
+    for k, obj in enumerate(objs):
+        if "pca" not in obj.uns.keys():
+            if n_components is None:
+                n_comps = n_comps_start
+                variance_ratio = 0
+                while variance_ratio < variance_threshold:
+                    sc.pp.pca(
+                        obj, n_comps=n_comps, use_highly_variable=use_highly_variable
+                    )
+                    variance_ratio = obj.uns["pca"]["variance_ratio"].sum()
+                    n_comps += n_comps_increment
+            else:
+                sc.pp.pca(
+                    obj, n_comps=n_components, use_highly_variable=use_highly_variable
+                )
+
+        if n_components is None:
+            n_comps_sel = np.argmax(
+                np.cumsum(obj.uns["pca"]["variance_ratio"]) >= variance_threshold
+            )
+        else:
+            n_comps_sel = n_components
+
+        assert (
+            obj.obsm["X_pca"].shape[0] >= n_comps_sel
+        ), "number of PCs are too few, please re-run pca"
+
+        var = pd.DataFrame(index=[f"{k}_{x}" for x in range(n_comps_sel)])
+        pca_adata = ad.AnnData(
+            obj.obsm["X_pca"][:, 0:n_comps_sel],
+            var=var,
+            obs=obj.obs,
+        )
+        pca_adata.obsm["landmark_distances"] = obj.obsm["landmark_distances"]
+        if names is not None:
+            pca_adata = {names[k]: pca_adata}
+        else:
+            pca_adata = [pca_adata]
+
+        return_object_single = transfer_to_reference(
+            adatas=pca_adata,
+            features=list(var.index),
+            reference=reference,
+            device=device,
+            n_epochs=n_epochs,
+            learning_rate=learning_rate,
+            subsample=subsample,
+            verbose=verbose,
+            return_models=return_models,
+            return_losses=return_losses,
+            max_cg_iterations=max_cg_iterations,
+            meta_key=meta_key,
+            **kwargs,
+        )
+
+        model_name = reference.adata.var.model.values[-1]
+        n_comps_sel_list[model_name] = n_comps_sel
+        objs_order[model_name] = k
+
+        return_object.update(return_object_single)
+
+    recons_data = []
+    recons_variance = []
+    recons_feature = []
+    recons_model = []
+    model_names = set(reference.adata.var.model)
+    for model_name in model_names:
+        pcs = objs[objs_order[model_name]].varm["PCs"]
+        pcs = pcs[:, 0 : n_comps_sel_list[model_name]].T
+
+        is_model = reference.adata.var.model.values == model_name
+        obj_vals = reference.adata.X[:, is_model]
+        recons_data.append(np.dot(obj_vals, pcs))
+        new_variance = np.dot(reference.adata.layers["var"][:, is_model], pcs ** 2)
+        recons_variance.append(new_variance)
+        recons_feature += list(objs[objs_order[model_name]].var.index)
+        recons_model += [model_name] * objs[objs_order[model_name]].var.shape[0]
+
+    recons_var_index = pd.Index(
+        [f"{y}_{x}" for x, y in zip(recons_feature, recons_model)]
+    )
+    recons_var = pd.DataFrame(
+        dict(model=recons_model, feature=recons_feature), index=recons_var_index
+    )
+    ordr = np.argsort(recons_var.index.values)
+    recons_var = recons_var.iloc[ordr, :]
+    recons_data = np.concatenate(recons_data, axis=1)[:, ordr]
+    recons_variance = np.concatenate(recons_variance, axis=1)[:, ordr]
+    obsm = reference.adata.obsm
+    reference.adata = ad.AnnData(
+        recons_data,
+        var=recons_var,
+        obs=reference.adata.obs,
+    )
+    reference.adata.layers["var"] = recons_variance
+    reference.adata.obsm = obsm
 
     return return_object
 
@@ -712,3 +899,19 @@ class PoissonDiscSampler:
 
         self._reset()
         return points[shuf_idx, :]
+
+
+def assess_reconstruction_loss(
+    adata: ad.AnnData, n_components: int = 500, step_size: int = 10
+) -> np.ndarray:
+    sc.pp.pca(adata, n_comps=n_components)
+    pca_vals = adata.obsm["X_pca"]
+    pcs = adata.varm["PCs"]
+    true_vals = adata.X
+    recons_loss = []
+    for nc in range(step_size, n_components + step_size, step_size):
+        recons = np.dot(pca_vals[:, 0:nc], pcs[:, 0:nc].T)
+        rmse = np.sum((true_vals - recons) ** 2)
+        recons_loss.append(rmse)
+    recons_loss = np.array(recons_loss) / adata.shape[1]
+    return recons_loss
