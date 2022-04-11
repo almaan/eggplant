@@ -393,4 +393,4 @@ class Reference:
             if by != "composite":
                 self._var_meta[name]["model"] = "composite"
 
-        self._build_adata(force_build=True)
+            self._build_adata(force_build=True)

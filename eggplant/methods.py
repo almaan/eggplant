@@ -90,7 +90,7 @@ def fit(
 
         loss_fun = model.mll(model.likelihood, model)
 
-        for epoch in epoch_iterator:
+        for _ in epoch_iterator:
 
             optimizer.zero_grad()
             sample = model(model.ldists)
@@ -262,7 +262,7 @@ def fa_transfer_to_reference(
     reference: m.Reference,
     variance_threshold: float = 0.3,
     n_components: Optional[int] = None,
-    use_highly_variable: bool = True,
+    use_highly_variable: bool = False,
     layer: Optional[str] = None,
     device: Literal["cpu", "gpu"] = "cpu",
     n_epochs: int = 1000,
@@ -297,7 +297,7 @@ def fa_transfer_to_reference(
      exactly n_components will be used.
     :type n_components: Optional[int]
     :param use_highly_variable: only use highly_variable_genes to
-     compute the principal components. Default is True.
+     compute the principal components. Default is False.
     :type use_highly_variable: bool
     :param layer: which layer to extract data from, defaults to raw
     :type layer: Optional[str]
@@ -330,6 +330,8 @@ def fa_transfer_to_reference(
     n_comps_increment = 50
     return_object = dict()
 
+    msg = "[Processing] ::  Model : {} | Transfer : {}/{}"
+
     if isinstance(adatas, dict):
         names = list(adatas.keys())
         objs = list(adatas.values())
@@ -343,7 +345,13 @@ def fa_transfer_to_reference(
     objs_order = dict()
     n_comps_sel_list = dict()
 
-    for k, obj in enumerate(objs):
+    if verbose:
+        obj_iterator = tqdm.tqdm(enumerate(objs))
+    else:
+        obj_iterator = enumerate(objs)
+
+    for k, obj in obj_iterator:
+        print(msg.format(k, k, len(objs)), flush=True)
         if "pca" not in obj.uns.keys():
             if n_components is None:
                 n_comps = n_comps_start
@@ -390,7 +398,7 @@ def fa_transfer_to_reference(
             n_epochs=n_epochs,
             learning_rate=learning_rate,
             subsample=subsample,
-            verbose=verbose,
+            verbose=False,
             return_models=return_models,
             return_losses=return_losses,
             max_cg_iterations=max_cg_iterations,
@@ -416,7 +424,7 @@ def fa_transfer_to_reference(
         is_model = reference.adata.var.model.values == model_name
         obj_vals = reference.adata.X[:, is_model]
         recons_data.append(np.dot(obj_vals, pcs))
-        new_variance = np.dot(reference.adata.layers["var"][:, is_model], pcs ** 2)
+        new_variance = np.dot(reference.adata.layers["var"][:, is_model], pcs**2)
         recons_variance.append(new_variance)
         recons_feature += list(objs[objs_order[model_name]].var.index)
         recons_model += [model_name] * objs[objs_order[model_name]].var.shape[0]
@@ -717,7 +725,7 @@ class PoissonDiscSampler:
         self.seed = seed
 
         self.r = min_dist
-        self.r2 = self.r ** 2
+        self.r2 = self.r**2
         self.delta = self.r / np.sqrt(2)
 
         self._set_grid(crd)

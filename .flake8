@@ -7,4 +7,4 @@ per-file-ignores =
     eggplant/__init__.py: F401
 
 exclude = landmark-selection/*.py, docs/source/conf.py
-ignore = W503, C901, E203, E722, W605 
+ignore = W503, C901, E203, E722, W605, C408
