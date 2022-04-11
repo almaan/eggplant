@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-import setuptools
+from setuptools import setup, find_packages
+from pathlib import Path
 
 with open("requirements.txt") as fr:
     reqs = fr.readlines()
@@ -9,7 +10,7 @@ reqs = [r.rstrip("\n") for r in reqs]
 with open("pypi-README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
-setuptools.setup(
+setup(
     name="spatial-eggplant",
     version="0.1",
     author="Alma Andersson",
@@ -18,7 +19,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/almaan/eggplant",
-    packages=setuptools.find_packages(),
+    packages=find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3.7",
         "License :: OSI Approved :: MIT License",
@@ -26,5 +27,10 @@ setuptools.setup(
         "Operating System :: POSIX :: Linux",
     ],
     python_requires=">=3.7",
-    install_requires=reqs,
+    install_requires=[
+        l.strip() for l in Path("requirements.txt").read_text("utf-8").splitlines()
+    ],
+    extras_require=dict(
+        dev=["pre-commit>=2.9.0"],
+    ),
 )
