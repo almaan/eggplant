@@ -8,12 +8,65 @@ from . import utils as ut
 from matplotlib.pyplot import ioff
 
 
-class TestModel(unittest.TestCase):
+class TestBaseGP(unittest.TestCase):
     def test_init_model_default(
         self,
     ):
         model_input = ut.create_model_input()
-        self.model = eg.m.GPModel(
+        self.model = eg.m.BaseGP(
+            landmark_distances=model_input["landmark_distances"],
+            feature_values=model_input["feature_values"],
+        )
+
+    def test_init_model_pandas_landmark_dist(
+        self,
+    ):
+        model_input = ut.create_model_input()
+        landmark_distances = pd.DataFrame(model_input["landmark_distances"])
+        landmark_distances.columns = [
+            "Landmark_{}".format(x) for x in range(landmark_distances.shape[1])
+        ]
+
+        self.model = eg.m.BaseGP(
+            landmark_distances=landmark_distances,
+            feature_values=model_input["feature_values"],
+        )
+
+    def test_init_model_landmark_names(
+        self,
+    ):
+        model_input = ut.create_model_input()
+        self.model = eg.m.BaseGP(
+            landmark_distances=model_input["landmark_distances"],
+            landmark_names=[
+                "Landmark_{}".format(x)
+                for x in range(len(model_input["landmark_distances"]))
+            ],
+            feature_values=model_input["feature_values"],
+        )
+
+    def test_model_loss_extension(
+        self,
+    ):
+        model_input = ut.create_model_input()
+        model = eg.m.BaseGP(
+            landmark_distances=model_input["landmark_distances"],
+            feature_values=model_input["feature_values"],
+        )
+
+        model.loss_history = [3] * 100
+        model.loss_history = [4] * 100
+
+        self.assertTrue(all([x == 3 for x in model.loss_history[0:100]]))
+        self.assertTrue(all([x == 4 for x in model.loss_history[100:200]]))
+
+
+class TestExactModel(unittest.TestCase):
+    def test_init_model_default(
+        self,
+    ):
+        model_input = ut.create_model_input()
+        self.model = eg.m.GPModelExact(
             landmark_distances=model_input["landmark_distances"],
             feature_values=model_input["feature_values"],
         )
@@ -27,7 +80,7 @@ class TestModel(unittest.TestCase):
         kernel_fun = gp.kernels.RBFKernel()
         device = "gpu"
 
-        self.model = eg.m.GPModel(
+        self.model = eg.m.GPModelExact(
             landmark_distances=model_input["landmark_distances"],
             feature_values=model_input["feature_values"],
             likelihood=likelihood,
@@ -36,53 +89,55 @@ class TestModel(unittest.TestCase):
             device=device,
         )
 
-    def test_init_model_pandas_landmark_dist(
+    def test_forward(
         self,
     ):
         model_input = ut.create_model_input()
-        landmark_distances = pd.DataFrame(model_input["landmark_distances"])
-        landmark_distances.columns = [
-            "Landmark_{}".format(x) for x in range(landmark_distances.shape[1])
-        ]
-
-        self.model = eg.m.GPModel(
-            landmark_distances=landmark_distances,
-            feature_values=model_input["feature_values"],
-        )
-
-    def test_init_model_landmark_names(
-        self,
-    ):
-        model_input = ut.create_model_input()
-        self.model = eg.m.GPModel(
-            landmark_distances=model_input["landmark_distances"],
-            landmark_names=[
-                "Landmark_{}".format(x)
-                for x in range(len(model_input["landmark_distances"]))
-            ],
-            feature_values=model_input["feature_values"],
-        )
-
-    def test_model_loss_extension(
-        self,
-    ):
-        model_input = ut.create_model_input()
-        model = eg.m.GPModel(
+        self.model = eg.m.GPModelExact(
             landmark_distances=model_input["landmark_distances"],
             feature_values=model_input["feature_values"],
         )
+        n_obs = self.model.ldists.shape[0]
+        normal = t.distributions.Normal(0, 1)
+        x = normal.sample(t.tensor([n_obs]))
+        self.model.forward(x)
 
-        model.loss_history = [3] * 100
-        model.loss_history = [4] * 100
 
-        self.assertTrue(all([x == 3 for x in model.loss_history[0:100]]))
-        self.assertTrue(all([x == 4 for x in model.loss_history[100:200]]))
+class TestApproxModel(unittest.TestCase):
+    def test_init_model_default(
+        self,
+    ):
+        model_input = ut.create_model_input()
+        self.model = eg.m.GPModelApprox(
+            landmark_distances=model_input["landmark_distances"],
+            feature_values=model_input["feature_values"],
+            inducing_points=model_input["inducing_points"],
+        )
+
+    def test_init_model_custom(
+        self,
+    ):
+        model_input = ut.create_model_input()
+        likelihood = gp.likelihoods.GaussianLikelihood()
+        mean_fun = gp.means.ZeroMean()
+        kernel_fun = gp.kernels.RBFKernel()
+        device = "gpu"
+
+        self.model = eg.m.GPModelApprox(
+            landmark_distances=model_input["landmark_distances"],
+            feature_values=model_input["feature_values"],
+            inducing_points=model_input["inducing_points"],
+            likelihood=likelihood,
+            mean_fun=mean_fun,
+            kernel_fun=kernel_fun,
+            device=device,
+        )
 
     def test_forward(
         self,
     ):
         model_input = ut.create_model_input()
-        self.model = eg.m.GPModel(
+        self.model = eg.m.GPModelApprox(
             landmark_distances=model_input["landmark_distances"],
             feature_values=model_input["feature_values"],
         )

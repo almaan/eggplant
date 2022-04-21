@@ -18,6 +18,7 @@ def create_model_input(n_obs: int = 20, n_lmks: int = 5):
     crd = np.hstack((xx[:, np.newaxis], yy[:, np.newaxis])) / n_obs
     lmks = np.random.uniform(0, 1, size=(n_lmks, 2))
     lmk_dists = cdist(crd, lmks)
+    inducing_points = lmk_dists[0 : int(n_obs / 2), :]
     values = np.random.normal(0, 1, size=xx.shape[0])
     meta = np.random.randint(0, 1, size=xx.shape[0])
 
@@ -27,6 +28,7 @@ def create_model_input(n_obs: int = 20, n_lmks: int = 5):
         landmark_distances=t.tensor(lmk_dists.astype(np.float32)),
         feature_values=t.tensor(values.astype(np.float32)),
         meta=meta,
+        inducing_points=t.tensor(inducing_points.astype(np.float32)),
     )
 
 
@@ -90,7 +92,7 @@ def create_image(
     probs = np.random.dirichlet(np.ones(3))
     img = np.zeros((side_size, side_size, 3))
     r = side_size / 4
-    r2 = r ** 2
+    r2 = r**2
     center = [int(side_size) / 2] * 2
     colors = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
     counts = np.zeros((3 if color else 1))

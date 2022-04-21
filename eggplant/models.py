@@ -12,19 +12,27 @@ import scanpy as sc
 from typing import Optional, List, Union, Dict
 from typing_extensions import Literal
 
+from gpytorch.models import ApproximateGP, ExactGP
+from gpytorch.variational import CholeskyVariationalDistribution as CVD
+from gpytorch.variational import VariationalStrategy as VS
+
+
 from . import utils as ut
 from . import sdea
 
 
-class GPModel(gp.models.ExactGP):
-    """Model for GP Regression"""
+class BaseGP:
+    """BaseModel for GP Regression
+
+    should be combined with one of `gpytorch.models` models, e.g., `ApproximateGP`
+    or `ExactGP`
+    """
 
     def __init__(
         self,
         landmark_distances: Union[t.Tensor, pd.DataFrame, np.ndarray],
         feature_values: t.Tensor,
         landmark_names: Optional[List[str]] = None,
-        likelihood: Optional[gp.likelihoods.Likelihood] = None,
         mean_fun: Optional[gp.means.Mean] = None,
         kernel_fun: Optional[gp.kernels.Kernel] = None,
         device: Literal["cpu", "gpu"] = "cpu",
@@ -38,8 +46,6 @@ class GPModel(gp.models.ExactGP):
         :param feature_values: n_obs x n_feature array with feature values
          for each observation
         :type feature_values: t.Tensor
-        :param likelihood: likelihood function
-        :type likelihood: gp.likelihoods.Likelihood, optional
         :param mean_fun: mean function
         :type mean_fun: gp.means.Mean, optional
         :param kernel: Kernel to use in covariance function
@@ -72,17 +78,6 @@ class GPModel(gp.models.ExactGP):
         self.ldists = self.ldists.to(device=self.device)
         self.features = self.features.to(device=self.device)
 
-        if likelihood is None:
-            likelihood = gp.likelihoods.GaussianLikelihood()
-
-        likelihood = likelihood.to(device=self.device)
-
-        super().__init__(
-            landmark_distances,
-            feature_values,
-            likelihood,
-        )
-
         if mean_fun is None:
             self.mean_module = gp.means.ConstantMean()
 
@@ -92,8 +87,6 @@ class GPModel(gp.models.ExactGP):
             kernel = kernel_fun
 
         self.covar_module = gp.kernels.ScaleKernel(kernel)
-
-        self.mll = gp.mlls.ExactMarginalLogLikelihood
 
         self._loss_history: Optional[List[float]] = None
         self.n_epochs = 0
@@ -118,6 +111,139 @@ class GPModel(gp.models.ExactGP):
             self._loss_history += history
 
         self.n_epochs = len(self._loss_history)
+
+
+class GPModelExact(BaseGP, ExactGP):
+    def __init__(
+        self,
+        landmark_distances: Union[t.Tensor, pd.DataFrame, np.ndarray],
+        feature_values: t.Tensor,
+        landmark_names: Optional[List[str]] = None,
+        likelihood: Optional[gp.likelihoods.Likelihood] = None,
+        mean_fun: Optional[gp.means.Mean] = None,
+        kernel_fun: Optional[gp.kernels.Kernel] = None,
+        device: Literal["cpu", "gpu"] = "cpu",
+    ) -> None:
+        """Constructor method for exact inference
+
+        :param landmark_distance: n_obs x n_landmarks array with distance
+         to each landmark for every observation
+        :type landmark_distance: Union[t.Tensor, pd.DataFrame, np.ndarray]
+        :param feature_values: n_obs x n_feature array with feature values
+         for each observation
+        :type feature_values: t.Tensor
+        :param likelihood: likelihood function
+        :type likelihood: gp.likelihoods.Likelihood, optional
+        :param mean_fun: mean function
+        :type mean_fun: gp.means.Mean, optional
+        :param kernel: Kernel to use in covariance function
+        :type kernel: gp.kernels.Kernel, optional
+        :param device: device to execute operations on, defaults to "cpu"
+        :type device: Literal["cpu","gpu"]
+        """
+
+        if likelihood is None:
+            likelihood = gp.likelihoods.GaussianLikelihood()
+
+        likelihood = likelihood.to(device=device)
+
+        ExactGP.__init__(
+            self,
+            landmark_distances,
+            feature_values,
+            likelihood,
+        )
+
+        BaseGP.__init__(
+            self,
+            landmark_distances,
+            feature_values,
+            landmark_names,
+            mean_fun,
+            kernel_fun,
+            device,
+        )
+
+        self.mll = gp.mlls.ExactMarginalLogLikelihood
+
+    def forward(
+        self,
+        x: t.tensor,
+    ) -> t.tensor:
+        """forward step in prediction"""
+
+        mean_x = self.mean_module(x)
+        covar_x = self.covar_module(x)
+
+        return gp.distributions.MultivariateNormal(mean_x, covar_x)
+
+
+class GPModelApprox(BaseGP, ApproximateGP):
+    def __init__(
+        self,
+        landmark_distances: Union[t.Tensor, pd.DataFrame, np.ndarray],
+        feature_values: t.Tensor,
+        inducing_points: Union[t.Tensor, pd.DataFrame, np.ndarray],
+        landmark_names: Optional[List[str]] = None,
+        likelihood: Optional[gp.likelihoods.Likelihood] = None,
+        mean_fun: Optional[gp.means.Mean] = None,
+        kernel_fun: Optional[gp.kernels.Kernel] = None,
+        device: Literal["cpu", "gpu"] = "cpu",
+        learn_inducing_points: bool = True,
+    ) -> None:
+
+        """Constructor method for approximate (variational) inference using
+        inducing points
+
+        :param landmark_distance: n_obs x n_landmarks array with distance
+         to each landmark for every observation
+        :type landmark_distance: Union[t.Tensor, pd.DataFrame, np.ndarray]
+        :param feature_values: n_obs x n_feature array with feature values
+         for each observation
+        :type feature_values: t.Tensor
+        :param inducing_points: points to use as inducing points, if
+         `learn_inducing_points = True` these act as intialization of inducing_points.
+        :type inducing_points: t.Tensor
+        :param likelihood: likelihood function
+        :type likelihood: gp.likelihoods.Likelihood, optional
+        :param mean_fun: mean function
+        :type mean_fun: gp.means.Mean, optional
+        :param kernel: Kernel to use in covariance function
+        :type kernel: gp.kernels.Kernel, optional
+        :param device: device to execute operations on, defaults to "cpu"
+        :type device: Literal["cpu","gpu"]
+        :param learn_inducing_points: whether or not to treat inducing points as
+         parameters to be learnt. Default is True.
+        :type learn_inducing_points: bool
+        """
+
+        inducing_points = ut._to_tensor(inducing_points)
+
+        variational_distribution = CVD(inducing_points.size(0))
+        variational_strategy = VS(
+            self,
+            inducing_points,
+            variational_distribution,
+            learn_inducing_locations=True,
+        )
+        ApproximateGP.__init__(self, variational_strategy)
+
+        if likelihood is None:
+            likelihood = gp.likelihoods.GaussianLikelihood()
+
+        self.likelihood = likelihood.to(device=device)
+
+        BaseGP.__init__(
+            self,
+            landmark_distances,
+            feature_values,
+            landmark_names,
+            mean_fun,
+            kernel_fun,
+            device,
+        )
+
+        self.mll = gp.mlls.VariationalELBO
 
     def forward(
         self,
@@ -276,7 +402,7 @@ class Reference:
 
     def transfer(
         self,
-        models: Union[GPModel, List[GPModel]],
+        models: Union[BaseGP, List[BaseGP]],
         meta: Optional[pd.DataFrame] = None,
         names: Optional[Union[List[str], str]] = None,
     ) -> None:
