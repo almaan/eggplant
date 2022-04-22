@@ -10,11 +10,11 @@ from . import utils as ut
 
 
 class FitTest(unittest.TestCase):
-    def test_fit_default(
+    def test_fit_exact_default(
         self,
     ):
         model_input = ut.create_model_input()
-        model = eg.m.GPModel(
+        model = eg.m.GPModelExact(
             landmark_distances=model_input["landmark_distances"],
             feature_values=model_input["feature_values"],
         )
@@ -23,11 +23,11 @@ class FitTest(unittest.TestCase):
             n_epochs=10,
         )
 
-    def test_fit_custom(
+    def test_fit_exact_custom(
         self,
     ):
         model_input = ut.create_model_input()
-        model = eg.m.GPModel(
+        model = eg.m.GPModelExact(
             landmark_distances=model_input["landmark_distances"],
             feature_values=model_input["feature_values"],
         )
@@ -36,6 +36,38 @@ class FitTest(unittest.TestCase):
             model,
             n_epochs=10,
             optimizer=optimizer,
+        )
+
+    def test_fit_variational_default(
+        self,
+    ):
+        model_input = ut.create_model_input()
+        model = eg.m.GPModelApprox(
+            landmark_distances=model_input["landmark_distances"],
+            feature_values=model_input["feature_values"],
+            inducing_points=model_input["inducing_points"],
+        )
+        eg.fun.fit(
+            model,
+            n_epochs=10,
+        )
+
+    def test_fit_variational_custom(
+        self,
+    ):
+        model_input = ut.create_model_input()
+        model = eg.m.GPModelApprox(
+            landmark_distances=model_input["landmark_distances"],
+            feature_values=model_input["feature_values"],
+            inducing_points=model_input["inducing_points"],
+        )
+        optimizer = t.optim.Adam(model.parameters(), lr=0.01)
+
+        eg.fun.fit(
+            model,
+            n_epochs=10,
+            optimizer=optimizer,
+            batch_size=5,
         )
 
 
@@ -59,7 +91,7 @@ class TransferTest(unittest.TestCase):
             n_epochs=10,
         )
 
-    def test_transfer_custom(
+    def test_transfer_exact_custom(
         self,
     ):
         adata = ut.create_adata()
@@ -82,6 +114,33 @@ class TransferTest(unittest.TestCase):
             return_models=True,
             return_losses=True,
             max_cg_iterations=1000,
+        )
+
+    def test_transfer_variational_custom(
+        self,
+    ):
+        adata = ut.create_adata()
+        feature = adata.var.index[0]
+
+        reference_input = ut.create_model_input()
+        ref = eg.m.Reference(
+            domain=reference_input["domain"],
+            landmarks=reference_input["landmarks"],
+            meta=t.tensor(reference_input["meta"]),
+        )
+
+        eg.fun.transfer_to_reference(
+            [adata],
+            feature,
+            n_epochs=10,
+            reference=ref,
+            layer="layer",
+            subsample=0.9,
+            return_models=True,
+            return_losses=True,
+            max_cg_iterations=1000,
+            inference_method="variational",
+            n_inducing_points=5,
         )
 
     def test_transfer_partial(
@@ -231,6 +290,64 @@ class TransferTest(unittest.TestCase):
             [adata],
             feature,
             reference=ref,
+        )
+
+
+class FaTransferTest(unittest.TestCase):
+    def test_transfer_default(
+        self,
+    ):
+        adata = ut.create_adata(n_features=20)
+        feature = adata.var.index[0]
+        reference_input = ut.create_model_input()
+
+        ref = eg.m.Reference(
+            domain=reference_input["domain"],
+            landmarks=reference_input["landmarks"],
+            meta=t.tensor(reference_input["meta"]),
+        )
+
+        eg.fun.fa_transfer_to_reference(
+            [adata],
+            reference=ref,
+            n_epochs=10,
+        )
+
+    def test_transfer_variance_explained(
+        self,
+    ):
+        adata = ut.create_adata(n_features=20)
+        feature = adata.var.index[0]
+        reference_input = ut.create_model_input()
+        ref = eg.m.Reference(
+            domain=reference_input["domain"],
+            landmarks=reference_input["landmarks"],
+            meta=t.tensor(reference_input["meta"]),
+        )
+
+        eg.fun.fa_transfer_to_reference(
+            [adata],
+            reference=ref,
+            n_epochs=10,
+        )
+
+    def test_transfer_n_components(
+        self,
+    ):
+        adata = ut.create_adata(n_features=20)
+        feature = adata.var.index[0]
+        reference_input = ut.create_model_input()
+        ref = eg.m.Reference(
+            domain=reference_input["domain"],
+            landmarks=reference_input["landmarks"],
+            meta=t.tensor(reference_input["meta"]),
+        )
+
+        eg.fun.fa_transfer_to_reference(
+            [adata],
+            reference=ref,
+            n_epochs=10,
+            variance_threshold=0.2,
         )
 
 

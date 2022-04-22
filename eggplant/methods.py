@@ -3,8 +3,10 @@ from contextlib import nullcontext
 from typing import Dict, List, Optional, Union, Tuple
 
 import anndata as ad
+import scanpy as sc
 import gpytorch as gp
 import numpy as np
+import pandas as pd
 from scipy.spatial.distance import cdist
 import torch as t
 import tqdm
@@ -34,13 +36,14 @@ def _optimizer_to(optimizer, device):
 
 
 def fit(
-    model: m.GPModel,
+    model: Union[m.GPModelExact, m.GPModelApprox],
     n_epochs: int,
     optimizer: Optional[t.optim.Optimizer] = None,
     fast_computation: bool = True,
     learning_rate: float = 0.01,
     verbose: bool = False,
     seed: int = 0,
+    batch_size: Optional[int] = None,
     progress_message: str = None,
     **kwargs,
 ) -> None:
@@ -62,8 +65,10 @@ def fit(
     :type verbose: bool = False,
     :param seed: random seed, defaults to 0
     :type seed: int
+    :param batch_size:  Batch size. Defaults to None.
+    :type batch_size: int
     :param progress_message: message to include in progress bar
-    :type progress: str
+    :type progress_message: str
     """
 
     t.manual_seed(seed)
@@ -86,16 +91,45 @@ def fit(
 
     with gp.settings.fast_computations() if fast_computation else nullcontext():
 
-        loss_fun = model.mll(model.likelihood, model)
+        if isinstance(model, m.GPModelExact):
 
-        for epoch in epoch_iterator:
+            loss_fun = model.mll(model.likelihood, model)
 
-            optimizer.zero_grad()
-            sample = model(model.ldists)
-            loss = -loss_fun(sample, model.features)
-            loss.backward()
-            optimizer.step()
-            loss_history.append(loss.detach().item())
+            for _ in epoch_iterator:
+                optimizer.zero_grad()
+                sample = model(model.ldists)
+                loss = -loss_fun(sample, model.features)
+                loss.backward()
+                optimizer.step()
+                loss_history.append(loss.detach().item())
+
+        elif isinstance(model, m.GPModelApprox):
+            from torch.utils.data import TensorDataset, DataLoader
+
+            pow2 = 2 ** np.arange(11)
+            if batch_size is None:
+                _batch_size = int(pow2[np.argmax(model.S < pow2) - 1])
+            else:
+                assert (
+                    batch_size < model.S
+                ), "batch size is larger than the number of observations"
+                _batch_size = int(batch_size)
+
+            train_dataset = TensorDataset(model.ldists, model.features)
+            train_loader = DataLoader(
+                train_dataset, batch_size=_batch_size, shuffle=True
+            )
+            loss_fun = model.mll(
+                model.likelihood, model, num_data=model.features.size(0)
+            )
+
+            for _ in epoch_iterator:
+                for x_batch, y_batch in train_loader:
+                    optimizer.zero_grad()
+                    sample = model(x_batch)
+                    loss = -loss_fun(sample, y_batch)
+                    loss.backward()
+                    optimizer.step()
 
     model = model.to(t.device("cpu"))
 
@@ -126,8 +160,17 @@ def transfer_to_reference(
     return_losses: bool = True,
     max_cg_iterations: int = 1000,
     meta_key: str = "meta",
+    inference_method: Union[
+        Literal["exact", "variational"],
+        List[Literal["exact", "variational"]],
+        Dict[str, Literal["exact", "variational"]],
+    ] = "exact",
+    n_inducing_points: int = None,
+    batch_size: Optional[int] = None,
     **kwargs,
-) -> Dict[str, Union[List["m.GPModel"], List[np.ndarray]]]:
+) -> Dict[
+    str, Union[List[Union["m.GPModelExact", "m.GPModelApprox"]], List[np.ndarray]]
+]:
     """transfer observed data to a reference
 
     :param adatas: AnnData objects holding data to transfer
@@ -161,16 +204,44 @@ def transfer_to_reference(
     :type max_cg_iterations: int = 1000,
     :param meta_key: key in uns slot that holds additional meta info
     :type meta_key: str
+    :param inference_method: which inference method to use, the options
+     are "exact" and "variational" - use "variational" for large data sets.
+     If a single string is given then this method is applied to all objects in
+     the data set, otherwise a list or dict specifying the inference method for
+     each object can be given. Defaults to "exact".
+    :type inference_method: Union[Literal["exact", "variational"],
+     List[Literal["exact", "variational"]],
+     Dict[str, Literal["exact", "variational"]]]
+    :param n_inducing_points: number of inducing points to
+     use in variational inference.
+     Defaults to None, which will render 10% of observations
+     in observed data if n_obs < 1e5
+     else 10000.
+    :type n_inducing_points: int
+    :param batch_size: batch_size to use in approximate (variational) inference.
+     Must be less than or equal to the number of observations in a sample.
+    :type batch_size: int
     """
 
     if not isinstance(adatas, (list, dict)):
         adatas = [adatas]
-        names = None
+        names = ["Model_0"]
     elif isinstance(adatas, dict):
         names = list(adatas.keys())
         adatas = list(adatas.values())
     else:
-        names = None
+        names = [f"Model_{k}" for k in range(len(adatas))]
+
+    if isinstance(inference_method, list):
+        inference_method = {
+            names[k]: inference_method[k] for k in range(len(inference_method))
+        }
+    elif isinstance(inference_method, str):
+        inference_method = {names[k]: inference_method for k in range(len(names))}
+    elif isinstance(inference_method, dict):
+        assert set(names) == set(
+            inference_method.keys()
+        ), "keys of inference_method does not match with data"
 
     models = {}
     losses = {}
@@ -190,8 +261,9 @@ def transfer_to_reference(
 
     for k, _adata in enumerate(adatas):
         adata = ut.subsample(_adata, keep=subsample[k])
-
-        model_name = names[k] if names is not None else f"Model_{k}"
+        n_obs = len(adata)
+        # model_name = names[k] if names is not None else f"Model_{k}"
+        model_name = names[k]
 
         landmark_distances = adata.obsm["landmark_distances"]
 
@@ -201,17 +273,50 @@ def transfer_to_reference(
             feature_values = get_feature(adata)
 
             if verbose:
-                print(
-                    msg.format(model_name, feature, k * n_features + f + 1, n_total),
-                    flush=True,
+                print_msg = msg.format(
+                    model_name, feature, k * n_features + f + 1, n_total
                 )
+                print(print_msg, flush=True)
 
-            model = m.GPModel(
-                ut._to_tensor(landmark_distances),
-                ut._to_tensor(feature_values),
-                device=device,
-                **kwargs,
-            )
+            if inference_method[names[k]] == "exact":
+
+                model = m.GPModelExact(
+                    landmark_distances=ut._to_tensor(landmark_distances),
+                    feature_values=ut._to_tensor(feature_values),
+                    device=device,
+                    **kwargs,
+                )
+            elif inference_method[names[k]] == "variational":
+                if n_inducing_points is None:
+                    if n_obs > 1e5:
+                        n_inducing_points = 10000
+                    else:
+                        if n_obs < 5e3:
+                            print(
+                                "[WARNING] : You're using approximate (variational)",
+                                "inference on a small data set",
+                                "({} observations)".format(n_obs),
+                            )
+                        n_inducing_points = int(np.ceil(0.1 * n_obs))
+                else:
+                    assert (
+                        n_obs > n_inducing_points
+                    ), "number of inducing points are more than number of observations"
+
+                inducing_point_idxs = np.random.choice(
+                    len(landmark_distances), n_inducing_points, replace=False
+                )
+                inducing_points = ut._to_tensor(landmark_distances)[
+                    inducing_point_idxs, :
+                ]
+
+                model = m.GPModelApprox(
+                    landmark_distances=ut._to_tensor(landmark_distances),
+                    feature_values=ut._to_tensor(feature_values),
+                    inducing_points=inducing_points,
+                    device=device,
+                    **kwargs,
+                )
 
             with gp.settings.max_cg_iterations(max_cg_iterations):
                 fit(
@@ -219,6 +324,7 @@ def transfer_to_reference(
                     n_epochs=n_epochs,
                     learning_rate=learning_rate,
                     verbose=verbose,
+                    batch_size=batch_size,
                     **kwargs,
                 )
 
@@ -252,6 +358,203 @@ def transfer_to_reference(
 
     if len(return_object) == 1:
         return_object = list(return_object.values())[0]
+
+    return return_object
+
+
+def fa_transfer_to_reference(
+    adatas: Union[ad.AnnData, List[ad.AnnData], Dict[str, ad.AnnData]],
+    reference: m.Reference,
+    variance_threshold: float = 0.3,
+    n_components: Optional[int] = None,
+    use_highly_variable: bool = False,
+    layer: Optional[str] = None,
+    device: Literal["cpu", "gpu"] = "cpu",
+    n_epochs: int = 1000,
+    learning_rate: float = 0.01,
+    subsample: Optional[Union[float, int]] = None,
+    verbose: bool = False,
+    return_models: bool = False,
+    return_losses: bool = True,
+    max_cg_iterations: int = 1000,
+    meta_key: str = "meta",
+    inference_method: Literal["exact", "variational"] = "exact",
+    **kwargs,
+) -> Dict[
+    str, Union[List[Union["m.GPModelExact", "m.GPModelApprox"]], List[np.ndarray]]
+]:
+    """fast approximate transfer of observed data to a reference
+
+    similar to :paramref:`~eggplant.methods.transfer_to_reference`, but designed
+    for *fast approximate* transfer of the full set of features. To speed up the
+    transfer process we project the data into a low-dimensional space, transfer
+    this representation, and then reconstruct the original data. This
+    significantly reduces the number of features that need to be transferred to
+    the reference, but comes at the cost of only an *approximate*
+    representation, which depends on either of the specified variance_threshold
+    or n_components parameters.
+
+    :param adatas: AnnData objects holding data to transfer
+    :type adatas: Union[ad.AnnData, List[ad.AnnData], Dict[str, ad.AnnData]]
+    :param reference: reference to transfer data to
+    :type reference: m.Reference
+    :param variance_threshold: fraction of variance that principal components
+     should explain
+    :type variance_threshold: float
+    :param n_components: use instead of variance_threshold. If specified,
+     exactly n_components will be used.
+    :type n_components: Optional[int]
+    :param use_highly_variable: only use highly_variable_genes to
+     compute the principal components. Default is False.
+    :type use_highly_variable: bool
+    :param layer: which layer to extract data from, defaults to raw
+    :type layer: Optional[str]
+    :param device: device to use for computations, defaults to "cpu"
+    :type device: Litreal["cpu","gpu"]
+    :param n_epochs: number of epochs to use, defaults to 1000
+    :type n_epochs: int
+    :param learning_rate: learning rate, defaults to 0.01
+    :type learning_rate: float
+    :param subsample: if <= 1 then interpreted of fraction of observations,
+    to keep. If > 1 interpreted as number of observations to keep
+    in sumbsampling, defaults to None (no sumbsampling)
+    :type subsample: Optional[Union[float, int]] = None,
+    :param verbose: set to true to use verbose mode, defaults to True
+    :type verbose: bool
+    :param return_models: set to True to return fitted models, defaults to False
+    :type return_models: bool
+    :param return_losses: return loss history of each model, defaults to True
+    :type return_losses: bool
+    :param max_cg_iterations: The maximum number of conjugate gradient iterations to
+    perform (when computing matrix solves). A higher value rarely results in
+    more accurate solves – instead, lower the CG tolerance
+    (from GPyTorch documentation), defaults to 1000.
+    :type max_cg_iterations: int = 1000,
+    :param meta_key: key in uns slot that holds additional meta info
+    :type meta_key: str
+    """
+
+    n_comps_start = 200
+    n_comps_increment = 50
+    return_object = dict()
+
+    msg = "[Processing] ::  Model : {} | Transfer : {}/{}"
+
+    if isinstance(adatas, dict):
+        names = list(adatas.keys())
+        objs = list(adatas.values())
+    elif isinstance(adatas, list):
+        names = None
+        objs = adatas
+    else:
+        names = None
+        objs = [adatas]
+
+    objs_order = dict()
+    n_comps_sel_list = dict()
+
+    if verbose:
+        obj_iterator = tqdm.tqdm(enumerate(objs))
+    else:
+        obj_iterator = enumerate(objs)
+
+    for k, obj in obj_iterator:
+        print(msg.format(k, k, len(objs)), flush=True)
+        if "pca" not in obj.uns.keys():
+            if n_components is None:
+                n_comps = min(n_comps_start, len(obj) - 1, obj.shape[1] - 1)
+                variance_ratio = 0
+                while variance_ratio < variance_threshold:
+                    sc.pp.pca(
+                        obj, n_comps=n_comps, use_highly_variable=use_highly_variable
+                    )
+                    variance_ratio = obj.uns["pca"]["variance_ratio"].sum()
+                    n_comps += n_comps_increment
+            else:
+                sc.pp.pca(
+                    obj, n_comps=n_components, use_highly_variable=use_highly_variable
+                )
+
+        if n_components is None:
+            n_comps_sel = np.argmax(
+                np.cumsum(obj.uns["pca"]["variance_ratio"]) >= variance_threshold
+            )
+        else:
+            n_comps_sel = n_components
+
+        assert (
+            obj.obsm["X_pca"].shape[0] >= n_comps_sel
+        ), "number of PCs are too few, please re-run pca"
+
+        var = pd.DataFrame(index=[f"{k}_{x}" for x in range(n_comps_sel)])
+        pca_adata = ad.AnnData(
+            obj.obsm["X_pca"][:, 0:n_comps_sel],
+            var=var,
+            obs=obj.obs,
+        )
+        pca_adata.obsm["landmark_distances"] = obj.obsm["landmark_distances"]
+        if names is not None:
+            pca_adata = {names[k]: pca_adata}
+        else:
+            pca_adata = [pca_adata]
+
+        return_object_single = transfer_to_reference(
+            adatas=pca_adata,
+            features=list(var.index),
+            reference=reference,
+            device=device,
+            n_epochs=n_epochs,
+            learning_rate=learning_rate,
+            subsample=subsample,
+            verbose=False,
+            return_models=return_models,
+            return_losses=return_losses,
+            max_cg_iterations=max_cg_iterations,
+            meta_key=meta_key,
+            inference_method=inference_method,
+            **kwargs,
+        )
+        model_name = reference.adata.var.model.values[-1]
+        n_comps_sel_list[model_name] = n_comps_sel
+        objs_order[model_name] = k
+
+        return_object.update(return_object_single)
+
+    recons_data = []
+    recons_variance = []
+    recons_feature = []
+    recons_model = []
+    model_names = set(reference.adata.var.model)
+    for model_name in model_names:
+        pcs = objs[objs_order[model_name]].varm["PCs"]
+        pcs = pcs[:, 0 : n_comps_sel_list[model_name]].T
+
+        is_model = reference.adata.var.model.values == model_name
+        obj_vals = reference.adata.X[:, is_model]
+        recons_data.append(np.dot(obj_vals, pcs))
+        new_variance = np.dot(reference.adata.layers["var"][:, is_model], pcs**2)
+        recons_variance.append(new_variance)
+        recons_feature += list(objs[objs_order[model_name]].var.index)
+        recons_model += [model_name] * objs[objs_order[model_name]].var.shape[0]
+
+    recons_var_index = pd.Index(
+        [f"{y}_{x}" for x, y in zip(recons_feature, recons_model)]
+    )
+    recons_var = pd.DataFrame(
+        dict(model=recons_model, feature=recons_feature), index=recons_var_index
+    )
+    ordr = np.argsort(recons_var.index.values)
+    recons_var = recons_var.iloc[ordr, :]
+    recons_data = np.concatenate(recons_data, axis=1)[:, ordr]
+    recons_variance = np.concatenate(recons_variance, axis=1)[:, ordr]
+    obsm = reference.adata.obsm
+    reference.adata = ad.AnnData(
+        recons_data,
+        var=recons_var,
+        obs=reference.adata.obs,
+    )
+    reference.adata.layers["var"] = recons_variance
+    reference.adata.obsm = obsm
 
     return return_object
 
@@ -433,7 +736,7 @@ def estimate_n_landmarks(
                 # sub_landmark_distances = landmark_distances[:, 0:n_lmk]
                 sub_landmark_distances = landmark_distances[:, pick_lmks]
                 t.manual_seed(seed)
-                model = m.GPModel(
+                model = m.GPModelExact(
                     ut._to_tensor(sub_landmark_distances),
                     ut._to_tensor(feature_values),
                     device=device,
@@ -530,7 +833,7 @@ class PoissonDiscSampler:
         self.seed = seed
 
         self.r = min_dist
-        self.r2 = self.r ** 2
+        self.r2 = self.r**2
         self.delta = self.r / np.sqrt(2)
 
         self._set_grid(crd)

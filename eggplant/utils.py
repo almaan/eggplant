@@ -3,7 +3,7 @@ import numpy as np
 import anndata as ad
 import torch as t
 
-from typing import Union, Optional, List, Tuple, TypeVar, Callable
+from typing import Union, Optional, List, Tuple, TypeVar, Callable, Iterable, Any, Dict
 
 T = TypeVar("T")
 S = TypeVar("T")
@@ -255,6 +255,16 @@ def get_capture_location_diameter(
     except:
         spot_diameter = False
     return spot_diameter
+
+
+def list_dict_iterator(x: Union[List[Any], Dict[Any, Any]]) -> Iterable:
+
+    if isinstance(x, dict):
+        return iter(x.values())
+    if isinstance(x, list):
+        return iter(x)
+    else:
+        raise TypeError
 
 
 # def rmse(
