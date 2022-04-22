@@ -78,7 +78,7 @@ class TestExactModel(unittest.TestCase):
         likelihood = gp.likelihoods.GaussianLikelihood()
         mean_fun = gp.means.ZeroMean()
         kernel_fun = gp.kernels.RBFKernel()
-        device = "gpu"
+        device = "cpu"
 
         self.model = eg.m.GPModelExact(
             landmark_distances=model_input["landmark_distances"],
@@ -121,7 +121,7 @@ class TestApproxModel(unittest.TestCase):
         likelihood = gp.likelihoods.GaussianLikelihood()
         mean_fun = gp.means.ZeroMean()
         kernel_fun = gp.kernels.RBFKernel()
-        device = "gpu"
+        device = "cpu"
 
         self.model = eg.m.GPModelApprox(
             landmark_distances=model_input["landmark_distances"],
@@ -140,6 +140,7 @@ class TestApproxModel(unittest.TestCase):
         self.model = eg.m.GPModelApprox(
             landmark_distances=model_input["landmark_distances"],
             feature_values=model_input["feature_values"],
+            inducing_points=model_input["landmark_distances"][0:5, :],
         )
         n_obs = self.model.ldists.shape[0]
         normal = t.distributions.Normal(0, 1)

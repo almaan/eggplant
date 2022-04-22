@@ -297,9 +297,10 @@ class FaTransferTest(unittest.TestCase):
     def test_transfer_default(
         self,
     ):
-        adata = ut.create_adata()
+        adata = ut.create_adata(n_features=20)
         feature = adata.var.index[0]
         reference_input = ut.create_model_input()
+
         ref = eg.m.Reference(
             domain=reference_input["domain"],
             landmarks=reference_input["landmarks"],
@@ -315,7 +316,7 @@ class FaTransferTest(unittest.TestCase):
     def test_transfer_variance_explained(
         self,
     ):
-        adata = ut.create_adata()
+        adata = ut.create_adata(n_features=20)
         feature = adata.var.index[0]
         reference_input = ut.create_model_input()
         ref = eg.m.Reference(
@@ -333,7 +334,7 @@ class FaTransferTest(unittest.TestCase):
     def test_transfer_n_components(
         self,
     ):
-        adata = ut.create_adata()
+        adata = ut.create_adata(n_features=20)
         feature = adata.var.index[0]
         reference_input = ut.create_model_input()
         ref = eg.m.Reference(

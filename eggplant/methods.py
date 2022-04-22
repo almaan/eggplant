@@ -43,7 +43,7 @@ def fit(
     learning_rate: float = 0.01,
     verbose: bool = False,
     seed: int = 0,
-    batch_size: int = Optional[None],
+    batch_size: Optional[int] = None,
     progress_message: str = None,
     **kwargs,
 ) -> None:
@@ -65,7 +65,7 @@ def fit(
     :type verbose: bool = False,
     :param seed: random seed, defaults to 0
     :type seed: int
-    :param batch_size:  blah. Defaults to None.
+    :param batch_size:  Batch size. Defaults to None.
     :type batch_size: int
     :param progress_message: message to include in progress bar
     :type progress_message: str
@@ -106,9 +106,18 @@ def fit(
         elif isinstance(model, m.GPModelApprox):
             from torch.utils.data import TensorDataset, DataLoader
 
+            pow2 = 2 ** np.arange(11)
+            if batch_size is None:
+                _batch_size = int(pow2[np.argmax(model.S < pow2) - 1])
+            else:
+                assert (
+                    batch_size < model.S
+                ), "batch size is larger than the number of observations"
+                _batch_size = int(batch_size)
+
             train_dataset = TensorDataset(model.ldists, model.features)
             train_loader = DataLoader(
-                train_dataset, batch_size=batch_size, shuffle=True
+                train_dataset, batch_size=_batch_size, shuffle=True
             )
             loss_fun = model.mll(
                 model.likelihood, model, num_data=model.features.size(0)
@@ -159,7 +168,9 @@ def transfer_to_reference(
     n_inducing_points: int = None,
     batch_size: Optional[int] = None,
     **kwargs,
-) -> Dict[str, Union[List["m.GPModel"], List[np.ndarray]]]:
+) -> Dict[
+    str, Union[List[Union["m.GPModelExact", "m.GPModelApprox"]], List[np.ndarray]]
+]:
     """transfer observed data to a reference
 
     :param adatas: AnnData objects holding data to transfer
@@ -214,12 +225,12 @@ def transfer_to_reference(
 
     if not isinstance(adatas, (list, dict)):
         adatas = [adatas]
-        names = None
+        names = ["Model_0"]
     elif isinstance(adatas, dict):
         names = list(adatas.keys())
         adatas = list(adatas.values())
     else:
-        names = None
+        names = [f"Model_{k}" for k in range(len(adatas))]
 
     if isinstance(inference_method, list):
         inference_method = {
@@ -248,12 +259,11 @@ def transfer_to_reference(
     if not hasattr(subsample, "__len__"):
         subsample = [subsample for _ in range(len(adatas))]
 
-    pow2 = 2 ** np.arange(11)
-
     for k, _adata in enumerate(adatas):
         adata = ut.subsample(_adata, keep=subsample[k])
         n_obs = len(adata)
-        model_name = names[k] if names is not None else f"Model_{k}"
+        # model_name = names[k] if names is not None else f"Model_{k}"
+        model_name = names[k]
 
         landmark_distances = adata.obsm["landmark_distances"]
 
@@ -300,14 +310,6 @@ def transfer_to_reference(
                     inducing_point_idxs, :
                 ]
 
-                if batch_size is None:
-                    _batch_size = pow2[np.argmax(n_obs < pow2) - 1]
-                else:
-                    assert (
-                        batch_size < n_obs
-                    ), "batch size is larger than the number of observations"
-                    _batch_size = batch_size
-
                 model = m.GPModelApprox(
                     landmark_distances=ut._to_tensor(landmark_distances),
                     feature_values=ut._to_tensor(feature_values),
@@ -322,7 +324,7 @@ def transfer_to_reference(
                     n_epochs=n_epochs,
                     learning_rate=learning_rate,
                     verbose=verbose,
-                    batch_size=int(_batch_size),
+                    batch_size=batch_size,
                     **kwargs,
                 )
 
@@ -378,7 +380,9 @@ def fa_transfer_to_reference(
     meta_key: str = "meta",
     inference_method: Literal["exact", "variational"] = "exact",
     **kwargs,
-) -> Dict[str, Union[List["m.GPModel"], List[np.ndarray]]]:
+) -> Dict[
+    str, Union[List[Union["m.GPModelExact", "m.GPModelApprox"]], List[np.ndarray]]
+]:
     """fast approximate transfer of observed data to a reference
 
     similar to :paramref:`~eggplant.methods.transfer_to_reference`, but designed
@@ -458,7 +462,7 @@ def fa_transfer_to_reference(
         print(msg.format(k, k, len(objs)), flush=True)
         if "pca" not in obj.uns.keys():
             if n_components is None:
-                n_comps = n_comps_start
+                n_comps = min(n_comps_start, len(obj) - 1, obj.shape[1] - 1)
                 variance_ratio = 0
                 while variance_ratio < variance_threshold:
                     sc.pp.pca(
@@ -510,7 +514,6 @@ def fa_transfer_to_reference(
             inference_method=inference_method,
             **kwargs,
         )
-
         model_name = reference.adata.var.model.values[-1]
         n_comps_sel_list[model_name] = n_comps_sel
         objs_order[model_name] = k
@@ -733,7 +736,7 @@ def estimate_n_landmarks(
                 # sub_landmark_distances = landmark_distances[:, 0:n_lmk]
                 sub_landmark_distances = landmark_distances[:, pick_lmks]
                 t.manual_seed(seed)
-                model = m.GPModel(
+                model = m.GPModelExact(
                     ut._to_tensor(sub_landmark_distances),
                     ut._to_tensor(feature_values),
                     device=device,
@@ -1012,19 +1015,3 @@ class PoissonDiscSampler:
 
         self._reset()
         return points[shuf_idx, :]
-
-
-def assess_reconstruction_loss(
-    adata: ad.AnnData, n_components: int = 500, step_size: int = 10
-) -> np.ndarray:
-    sc.pp.pca(adata, n_comps=n_components)
-    pca_vals = adata.obsm["X_pca"]
-    pcs = adata.varm["PCs"]
-    true_vals = adata.X
-    recons_loss = []
-    for nc in range(step_size, n_components + step_size, step_size):
-        recons = np.dot(pca_vals[:, 0:nc], pcs[:, 0:nc].T)
-        rmse = np.sum((true_vals - recons) ** 2)
-        recons_loss.append(rmse)
-    recons_loss = np.array(recons_loss) / adata.shape[1]
-    return recons_loss
