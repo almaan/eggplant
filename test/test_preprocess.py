@@ -55,7 +55,7 @@ class ReferenceToGrid(unittest.TestCase):
         )
         ref_crd, mta = eg.pp.reference_to_grid(
             ref_img,
-            n_approx_points=int(side_size ** 2),
+            n_approx_points=int(side_size**2),
             n_regions=1,
             background_color="black",
         )
@@ -72,7 +72,7 @@ class ReferenceToGrid(unittest.TestCase):
 
         ref_crd, mta = eg.pp.reference_to_grid(
             ref_img,
-            n_approx_points=int(side_size ** 2),
+            n_approx_points=int(side_size**2),
             n_regions=3,
             background_color="black",
         )
