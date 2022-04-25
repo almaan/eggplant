@@ -28,7 +28,7 @@ setup(
     ],
     python_requires=">=3.7",
     install_requires=[
-        l.strip() for l in Path("requirements.txt").read_text("utf-8").splitlines()
+        i.strip() for i in Path("requirements.txt").read_text("utf-8").splitlines()
     ],
     extras_require=dict(
         dev=["pre-commit>=2.9.0"],

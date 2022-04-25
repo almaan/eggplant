@@ -121,7 +121,7 @@ class TestApproxModel(unittest.TestCase):
         likelihood = gp.likelihoods.GaussianLikelihood()
         mean_fun = gp.means.ZeroMean()
         kernel_fun = gp.kernels.RBFKernel()
-        device = "cpu"
+        device = "gpu"
 
         self.model = eg.m.GPModelApprox(
             landmark_distances=model_input["landmark_distances"],

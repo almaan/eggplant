@@ -58,10 +58,7 @@ class BaseGP:
         self.L = landmark_distances.shape[1]
         self.G = feature_values.shape[1] if len(feature_values.shape) > 1 else 1
 
-        if device == "cuda" or device == "gpu":
-            self.device = t.device("cuda" if t.cuda.is_available() else "cpu")
-        else:
-            self.device = "cpu"
+        self.device = ut.correct_device(device)
 
         if isinstance(landmark_distances, pd.DataFrame):
             self.landmark_names = landmark_distances.columns.tolist()
@@ -145,7 +142,7 @@ class GPModelExact(BaseGP, ExactGP):
         if likelihood is None:
             likelihood = gp.likelihoods.GaussianLikelihood()
 
-        likelihood = likelihood.to(device=device)
+        likelihood = likelihood.to(device=ut.correct_device(device))
 
         ExactGP.__init__(
             self,
@@ -231,7 +228,7 @@ class GPModelApprox(BaseGP, ApproximateGP):
         if likelihood is None:
             likelihood = gp.likelihoods.GaussianLikelihood()
 
-        self.likelihood = likelihood.to(device=device)
+        self.likelihood = likelihood.to(device=ut.correct_device(device))
 
         BaseGP.__init__(
             self,

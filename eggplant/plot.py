@@ -836,7 +836,7 @@ def visualize_sdea_results(
             dge_res_keys = list(dge_res.keys())
             dge_res_keys = [dge_res_keys[k] for k in reorder_axes]
             _dge_res = {k: dge_res[k] for k in dge_res_keys}
-        except:
+        except KeyError:
             print("[ERROR] : Could not order axes according to specification.")
             _dge_res = dge_res
     else:
