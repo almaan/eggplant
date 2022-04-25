@@ -44,7 +44,7 @@ class ODE_solver:
 
     def min_fun(self, p: np.ndarray) -> float:
         diff = self.y.flatten() - self.model(self.time, p).flatten()
-        return np.mean(diff ** 2)
+        return np.mean(diff**2)
 
     def optim(
         self,

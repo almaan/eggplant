@@ -11,3 +11,6 @@ LANDMARK_CMAP = {
     7: "gray",
     8: "cyan",
 }
+
+
+DEVICE = dict(gpu="cuda", cuda="cuda", cpu="cpu")

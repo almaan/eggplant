@@ -252,7 +252,7 @@ def get_capture_location_diameter(
         spot_diameter = adata.uns["spatial"][spatial_key]["scalefactors"][
             "spot_diameter_fullres"
         ]
-    except:
+    except KeyError:
         spot_diameter = False
     return spot_diameter
 
@@ -287,3 +287,11 @@ def list_dict_iterator(x: Union[List[Any], Dict[Any, Any]]) -> Iterable:
 #         y.pop(-1)
 
 #     return y
+
+
+def correct_device(device: str) -> str:
+    if device == "cuda" or device == "gpu":
+        _device = t.device("cuda" if t.cuda.is_available() else "cpu")
+    else:
+        _device = "cpu"
+    return _device

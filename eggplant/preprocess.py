@@ -296,7 +296,7 @@ def match_scales(
             adata.uns["spatial"][sample_name]["scalefactors"][scalef] = (
                 old_sf / av_ratio
             )
-    except:
+    except KeyError:
         pass
 
 

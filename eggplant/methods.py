@@ -15,6 +15,7 @@ from kneed import KneeLocator
 
 from . import models as m
 from . import utils as ut
+from . import constants as C
 
 from collections import OrderedDict
 from itertools import product
@@ -124,19 +125,22 @@ def fit(
             )
 
             for _ in epoch_iterator:
+                batch_loss = 0
                 for x_batch, y_batch in train_loader:
                     optimizer.zero_grad()
                     sample = model(x_batch)
                     loss = -loss_fun(sample, y_batch)
                     loss.backward()
                     optimizer.step()
+                    batch_loss += loss.detach().item()
+                loss_history.append(batch_loss)
 
     model = model.to(t.device("cpu"))
 
     # cleanup cuda memory
     with t.no_grad():
         loss = loss.cpu()
-        _optimizer_to(optimizer, t.device("cpu"))
+        _optimizer_to(optimizer, t.device(C.DEVICE["cpu"]))
         del optimizer, loss, sample
         gc.collect()
         t.cuda.empty_cache()
@@ -151,7 +155,7 @@ def transfer_to_reference(
     features: Union[str, List[str]],
     reference: m.Reference,
     layer: Optional[str] = None,
-    device: Literal["cpu", "gpu"] = "cpu",
+    device: Literal["cpu", "gpu", "cuda"] = "cpu",
     n_epochs: int = 1000,
     learning_rate: float = 0.01,
     subsample: Optional[Union[float, int]] = None,
@@ -283,7 +287,7 @@ def transfer_to_reference(
                 model = m.GPModelExact(
                     landmark_distances=ut._to_tensor(landmark_distances),
                     feature_values=ut._to_tensor(feature_values),
-                    device=device,
+                    device=C.DEVICE[device],
                     **kwargs,
                 )
             elif inference_method[names[k]] == "variational":
@@ -314,7 +318,7 @@ def transfer_to_reference(
                     landmark_distances=ut._to_tensor(landmark_distances),
                     feature_values=ut._to_tensor(feature_values),
                     inducing_points=inducing_points,
-                    device=device,
+                    device=C.DEVICE[device],
                     **kwargs,
                 )
 
@@ -369,7 +373,7 @@ def fa_transfer_to_reference(
     n_components: Optional[int] = None,
     use_highly_variable: bool = False,
     layer: Optional[str] = None,
-    device: Literal["cpu", "gpu"] = "cpu",
+    device: Literal["cpu", "gpu", "cuda"] = "cpu",
     n_epochs: int = 1000,
     learning_rate: float = 0.01,
     subsample: Optional[Union[float, int]] = None,
@@ -410,7 +414,7 @@ def fa_transfer_to_reference(
     :param layer: which layer to extract data from, defaults to raw
     :type layer: Optional[str]
     :param device: device to use for computations, defaults to "cpu"
-    :type device: Litreal["cpu","gpu"]
+    :type device: Litreal["cpu","gpu","cuda"]
     :param n_epochs: number of epochs to use, defaults to 1000
     :type n_epochs: int
     :param learning_rate: learning rate, defaults to 0.01
@@ -502,7 +506,7 @@ def fa_transfer_to_reference(
             adatas=pca_adata,
             features=list(var.index),
             reference=reference,
-            device=device,
+            device=C.DEVICE[device],
             n_epochs=n_epochs,
             learning_rate=learning_rate,
             subsample=subsample,
@@ -739,7 +743,7 @@ def estimate_n_landmarks(
                 model = m.GPModelExact(
                     ut._to_tensor(sub_landmark_distances),
                     ut._to_tensor(feature_values),
-                    device=device,
+                    device=C.DEVICE[device],
                 )
 
                 fit_msg = "Eval: {} lmks | Rep: {}/{}".format(n_lmk, rep + 1, n_reps)

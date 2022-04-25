@@ -75,7 +75,7 @@ def mixed_normal(
         ws = ws.reshape(1, N)
 
     v1 = np.sum(ws * vrs, axis=1)
-    v2 = np.sum(ws * (mus ** 2), axis=1)
+    v2 = np.sum(ws * (mus**2), axis=1)
     v3 = np.sum(ws * mus, axis=1) ** 2
 
     new_var = v1 + v2 - v3
@@ -131,7 +131,7 @@ def sdea(
         raise TypeError("The provided data type is not yet supported.")
 
     if subset is not None:
-        keep_idx = set(list(range(adata.shape[0])))
+        keep_idx = set(range(adata.shape[0]))
         for col, val in subset.items():
             if col in adata.var.columns.values:
                 sidx = set(np.where(adata.var[col].values == val)[0])
@@ -168,7 +168,7 @@ def sdea(
             ordr = np.argsort(wmus, axis=1)
             wmus = np.take_along_axis(wmus, ordr, axis=1)
             wvars = np.take_along_axis(wvars, ordr, axis=1)
-            wstds = wvars ** 0.5
+            wstds = wvars**0.5
 
             comp = wmus[:, 0] + n_std * wstds[:, 0] < wmus[:, 1] - n_std * wstds[:, 1]
 
