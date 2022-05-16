@@ -428,6 +428,7 @@ def visualize_observed(
             img = a.uns["spatial"][sample_name]["images"]["hires"]
             sf = a.uns["spatial"][sample_name]["scalefactors"]["tissue_hires_scalef"]
             crds[k] = crds[k] * sf
+            lmks[k] = lmks[k] * sf
         else:
             img = None
         imgs.append(img)
