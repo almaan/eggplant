@@ -365,8 +365,9 @@ def visualize_transfer(
 
     data.append(names)
     data.append(np.arange(counts.shape[0]))
+    data.append([None] * len(crds))
 
-    return _visualize(data, **kwargs)
+    return _visualize(data, show_image=False, **kwargs)
 
 
 @_set_vizdoc
