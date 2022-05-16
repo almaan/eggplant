@@ -122,22 +122,29 @@ def _visualize(
     if landmark_cmap is None:
         landmark_cmap = C.LANDMARK_CMAP
 
-    if quantile_scaling:
-        if share_colorscale:
-            vmin = np.repeat(min([np.quantile(c, 0.01) for c in counts]), len(counts))
+    skip_counts = any([x is None for x in counts])
 
-            vmax = np.repeat(max([np.quantile(c, 0.99) for c in counts]), len(counts))
+    if not skip_counts:
+        if quantile_scaling:
+            if share_colorscale:
+                vmin = np.repeat(
+                    min([np.quantile(c, 0.01) for c in counts]), len(counts)
+                )
 
+                vmax = np.repeat(
+                    max([np.quantile(c, 0.99) for c in counts]), len(counts)
+                )
+
+            else:
+                vmin = np.array([np.quantile(c, 0.01) for c in counts])
+                vmax = np.array([np.quantile(c, 0.99) for c in counts])
         else:
-            vmin = np.array([np.quantile(c, 0.01) for c in counts])
-            vmax = np.array([np.quantile(c, 0.99) for c in counts])
-    else:
-        if share_colorscale:
-            vmin = [min([c.min() for c in counts])] * len(counts)
-            vmax = [max([c.max() for c in counts])] * len(counts)
-        else:
-            vmin = [None] * len(counts)
-            vmax = [None] * len(counts)
+            if share_colorscale:
+                vmin = [min([c.min() for c in counts])] * len(counts)
+                vmax = [max([c.max() for c in counts])] * len(counts)
+            else:
+                vmin = [None] * len(counts)
+                vmax = [None] * len(counts)
 
     for k in range(len(counts)):
         if show_image and imgs[k] is not None:
