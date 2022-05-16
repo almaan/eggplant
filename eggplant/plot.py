@@ -383,7 +383,11 @@ def visualize_observed(
 
     if isinstance(adatas, dict):
         _adatas = adatas.values()
-        names = [a + "_" + f for a in list(adatas.keys()) for f in features]
+        names = [
+            a + "_" + f if f is not None else a
+            for a in list(adatas.keys())
+            for f in features
+        ]
         get_feature = [
             ut._get_feature(
                 list(_adatas)[0],
