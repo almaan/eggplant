@@ -72,8 +72,12 @@ def _get_feature(
     feature: str,
     layer: Optional[str] = None,
 ):
+    if feature is None:
 
-    if feature in adata.var.index:
+        def get_feature(x: ad.AnnData) -> None:
+            return None
+
+    elif feature in adata.var.index:
 
         def get_feature(x: ad.AnnData):
             return x.obs_vector(feature, layer=layer)
@@ -99,10 +103,6 @@ def _get_feature(
 
         if no_obsm_match:
             raise ValueError(f"Feature {feature} not found in any slot.")
-    elif feature is None:
-
-        def get_feature(x: ad.AnnData) -> None:
-            return None
 
     return get_feature
 
