@@ -2,11 +2,21 @@ import pandas as pd
 import numpy as np
 import anndata as ad
 import torch as t
+import time
 
 from typing import Union, Optional, List, Tuple, TypeVar, Callable, Iterable, Any, Dict
 
 T = TypeVar("T")
 S = TypeVar("T")
+
+
+def get_visium_array_name(adata) -> Optional[str]:
+    try:
+        sample_name = list(adata.uns["spatial"].keys())[0]
+        return sample_name
+    except Exception:
+        print("[ERROR] : could not get image of array")
+        return None
 
 
 def pd_to_np(x: Union[pd.DataFrame, np.ndarray]) -> np.ndarray:
@@ -89,6 +99,10 @@ def _get_feature(
 
         if no_obsm_match:
             raise ValueError(f"Feature {feature} not found in any slot.")
+    elif feature is None:
+
+        def get_feature(x: ad.AnnData) -> None:
+            return None
 
     return get_feature
 
@@ -295,3 +309,38 @@ def correct_device(device: str) -> str:
     else:
         _device = "cpu"
     return _device
+
+
+class Timer:
+    """Timer : to time processes"""
+
+    def __init__(
+        self,
+    ) -> None:
+        self.t_start = None
+        self.t_end = None
+
+    def start(
+        self,
+    ) -> None:
+        self.t_end = None
+        self.t_start = time.time()
+
+    def end(
+        self,
+    ) -> None:
+        self.t_end = time.time()
+
+    @property
+    def time(
+        self,
+    ) -> Optional[float]:
+        if self.t_start is not None and self.t_end is not None:
+            return self.t_end - self.t_start
+        return None
+
+    def reset(
+        self,
+    ) -> None:
+        self.t_start = None
+        self.t_end = None

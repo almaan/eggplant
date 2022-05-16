@@ -37,6 +37,7 @@ def _visualize(
     exclude_feature_from_title: bool = False,
     flip_y: bool = False,
     colorbar_fontsize: float = 50,
+    show_image: bool = False,
     **kwargs,
 ) -> Optional[
     Union[
@@ -95,7 +96,7 @@ def _visualize(
 
     """
 
-    counts, lmks, crds, names, adata_id = data
+    counts, lmks, crds, names, adata_id, imgs = data
 
     if separate_colorbar:
         assert (
@@ -139,20 +140,24 @@ def _visualize(
             vmax = [None] * len(counts)
 
     for k in range(len(counts)):
-        ordr = np.argsort(counts[k]).flatten()
-        _sc = ax[k].scatter(
-            crds[k][ordr, 0],
-            crds[k][ordr, 1],
-            c=counts[k][ordr],
-            s=marker_size[adata_id[k]],
-            vmin=vmin[k],
-            vmax=vmax[k],
-            **kwargs,
-        )
+        if show_image and imgs[k] is not None:
+            ax[k].imshow(imgs[k])
 
-        if include_colorbar and not separate_colorbar:
-            cbar = fig.colorbar(_sc, ax=ax[k], orientation=colorbar_orientation)
-            cbar.ax.tick_params(labelsize=colorbar_fontsize)
+        ordr = np.argsort(counts[k]).flatten()
+        if counts[k] is not None:
+            _sc = ax[k].scatter(
+                crds[k][ordr, 0],
+                crds[k][ordr, 1],
+                c=counts[k][ordr],
+                s=marker_size[adata_id[k]],
+                vmin=vmin[k],
+                vmax=vmax[k],
+                **kwargs,
+            )
+
+            if include_colorbar and not separate_colorbar:
+                cbar = fig.colorbar(_sc, ax=ax[k], orientation=colorbar_orientation)
+                cbar.ax.tick_params(labelsize=colorbar_fontsize)
 
         if show_landmarks:
             for ll in range(lmks[k].shape[0]):
@@ -360,7 +365,7 @@ def visualize_transfer(
 @_set_vizdoc
 def visualize_observed(
     adatas: Union[Dict[str, ad.AnnData], List[ad.AnnData]],
-    features: Union[str, List[str]],
+    features: Optional[Union[str, List[str]]],
     layer: Optional[str] = None,
     **kwargs,
 ) -> None:
@@ -395,6 +400,7 @@ def visualize_observed(
         ]
 
         get_feature = [ut._get_feature(_adatas[0], feature) for feature in features]
+
     counts = [get_feature[k](a) for a in _adatas for k in range(n_features)]
     adata_id = [k for k in range(len(_adatas)) for _ in range(n_features)]
     lmks = [
@@ -404,7 +410,16 @@ def visualize_observed(
     ]
     crds = [a.obsm["spatial"] for a in _adatas for k in range(n_features)]
 
-    data = [counts, lmks, crds, names, adata_id]
+    imgs = list()
+    for a in _adatas:
+        sample_name = ut.get_visium_array_name(a)
+        if sample_name is not None:
+            img = a.uns["spatial"][sample_name]["images"]["hires"]
+        else:
+            img = None
+        imgs.append(img)
+
+    data = [counts, lmks, crds, names, adata_id, imgs]
 
     return _visualize(data, **kwargs)
 
