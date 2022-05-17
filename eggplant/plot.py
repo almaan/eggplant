@@ -813,7 +813,8 @@ def visualize_sdea_results(
     colorbar_orientation: Literal["horizontal", "vertical"] = "horizontal",
     no_sig_color: str = "lightgray",
     reorder_axes: Optional[List[int]] = None,
-) -> Tuple[plt.Figure, plt.Axes]:
+    return_figures: bool = False,
+) -> Union[Tuple[plt.Figure, plt.Axes], None]:
     """Visualize result from spatial differential expression analysis
 
     :param ref: reference object of type :class:`~eggplant.models.Reference`,
@@ -842,6 +843,8 @@ def visualize_sdea_results(
     :param reorder_axes: new order of axes, original order is [0, 1, 2,..],
      give new new order as [1, 0, 2,...] to switch place of subplot 1 and 0.
     :type reorder_axes: Optional[List[int]]
+    :param return_figures: return figure and axes objects. Default value is False.
+    :type return_figures: Union[Tuple[plt.Figure, plt.Axes],None]
 
     :return: Figure and Axes objects
     :rtype: Tuple[plt.Figure,plt.Axes]
@@ -928,7 +931,10 @@ def visualize_sdea_results(
     for axx in ax:
         axx.axis("off")
 
-    return fig, ax
+    if return_figures:
+        return fig, ax
+    else:
+        plt.show()
 
 
 def visualize_landmark_spread(
