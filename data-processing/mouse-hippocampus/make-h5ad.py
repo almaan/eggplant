@@ -66,7 +66,7 @@ r = 2100
 keep = []
 for ii in range(len(crd)):
     r2 = (crd[ii, 0] - x) ** 2 + (crd[ii, 1] - y) ** 2
-    if r2 <= r ** 2:
+    if r2 <= r**2:
         keep.append(ii)
 keep = np.array(keep)
 adata = adata[keep, :]
