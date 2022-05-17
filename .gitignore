@@ -18,3 +18,4 @@ docs/rtd-requirements.txt
 make-rtd-reqs.sh
 old*
 skip-*
+skip.-*
