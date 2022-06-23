@@ -90,6 +90,9 @@ def _visualize(
     :type flip_y: bool
     :param colorbar_fontsize: fontsize of colorbar ticks
     :type colorbar_fontsize: float
+    :param show_image: show tissue image in background.
+    :type show_image: bool
+
 
     :return: None or Figure and Axes objects, depending on return_figure value.
     :rtype: Optional[Tuple[plt.Figure,plt.Axes]]
@@ -426,7 +429,10 @@ def visualize_observed(
     for k, a in enumerate(_adatas):
         sample_name = ut.get_visium_array_name(a)
         if sample_name is not None:
-            img = a.uns["spatial"][sample_name]["images"]["hires"]
+            try:
+                img = a.uns["spatial"][sample_name]["images"]["hires"]
+            except KeyError:
+                img = None
             sf = a.uns["spatial"][sample_name]["scalefactors"]["tissue_hires_scalef"]
             crds[k] = crds[k] * sf
             lmks[k] = lmks[k] * sf

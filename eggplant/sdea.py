@@ -37,6 +37,56 @@ def ztest(
     return dict(z=z, pvalue=pval, sig=is_sig)
 
 
+# def mixed_normal(
+#     mus: np.ndarray,
+#     vrs: np.ndarray,
+#     ws: Optional[np.ndarray] = None,
+# ) -> Tuple[np.ndarray, np.ndarray]:
+#     """mean and var for weighted mixed
+#     normal.
+
+#     For n distributions :math:`N_i(\mu_i,\sigma^2_i)`
+#     we compute the mean and variance for the new weighted
+#     mix:
+
+#     :math:`N(\mu_{new},\sigma^2_{new}) = \sum_{i=1}^n w_iN(\mu_i,\sigma^2_i)`
+
+#     :param mus: mean values for each sample
+#     :type mus: np.ndarray
+#     :param vrs: variance values for each sample
+#     :type vrs: np.ndarray
+#     :param ws: weights to use when computing the
+#      new mean for the mixed distribution.
+#     :type ws: Optional[np.ndarray]
+
+#     :return: a tuple being :math:`(\mu_{new},\sigma^2_{new})`
+#     :rtype: Tuple[np.ndarray,np.ndarray]
+
+
+#     """
+
+#     if len(mus.shape) == 1:
+#         mus = mus.reshape(1, -1)
+
+#     N = mus.shape[1]
+
+#     if ws is None:
+#         ws = np.ones(N) / N
+
+#     if len(mus.shape) == 2:
+#         ws = ws.reshape(1, N)
+
+#     v1 = np.sum(ws * vrs, axis=1)
+#     v2 = np.sum(ws * (mus**2), axis=1)
+#     v3 = np.sum(ws * mus, axis=1) ** 2
+
+#     new_var = v1 + v2 - v3
+
+#     new_mean = np.sum(ws * mus, axis=1)
+
+#     return (new_mean, new_var)
+
+
 def mixed_normal(
     mus: np.ndarray,
     vrs: np.ndarray,
@@ -49,7 +99,9 @@ def mixed_normal(
     we compute the mean and variance for the new weighted
     mix:
 
-    :math:`N(\mu_{new},\sigma^2_{new}) = \sum_{i=1}^n w_iN(\mu_i,\sigma^2_i)`
+    :math:`\mu_{new} = \sum_{i=1}^n w_i\mu_i`
+    :math:`\sigma^2_{new} = \sum_{i=1}^n w_i^2\sigma^2_i`
+
 
     :param mus: mean values for each sample
     :type mus: np.ndarray
@@ -76,12 +128,7 @@ def mixed_normal(
     if len(mus.shape) == 2:
         ws = ws.reshape(1, N)
 
-    v1 = np.sum(ws * vrs, axis=1)
-    v2 = np.sum(ws * (mus**2), axis=1)
-    v3 = np.sum(ws * mus, axis=1) ** 2
-
-    new_var = v1 + v2 - v3
-
+    new_var = np.sum(ws**2 * vrs, axis=1)
     new_mean = np.sum(ws * mus, axis=1)
 
     return (new_mean, new_var)

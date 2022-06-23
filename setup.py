@@ -12,7 +12,7 @@ with open("pypi-README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="spatial-eggplant",
-    version="0.2.2",
+    version="0.2.3",
     author="Alma Andersson",
     author_email="almaan@kth.se",
     description="Landmark-based transfer of spatial transcriptomics data",
