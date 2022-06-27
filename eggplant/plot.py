@@ -919,12 +919,13 @@ def visualize_sdea_results(
 
         if len(o_lbl) < 3:
             o_lbl = np.linespace(o_lbl[0], o_lbl[-1], 3).round(2)
-            cbar.set_ticks(o_lbl)
 
         if colorbar_orientation[0] == "h":
             val_sep = "\n"
         else:
             val_sep = " "
+
+        _sc.set_clim(o_lbl[0], o_lbl[-1])
 
         n_lbl = (
             [str(o_lbl[0]) + val_sep + f"({neg_name})"]
