@@ -27,7 +27,7 @@ by doing:
 .. code-block:: console
 
    # activate conda environment
-   conda active
+   conda activate
    # create a conda enviroment from our provided file 
    conda env create -f conda/eggplant.yaml
    # activate the environment
