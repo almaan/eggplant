@@ -448,10 +448,10 @@ def fa_transfer_to_reference(
         names = list(adatas.keys())
         objs = list(adatas.values())
     elif isinstance(adatas, list):
-        names = None
+        names = [f"Model_{k}" for k in range(len(adatas))]
         objs = adatas
     else:
-        names = None
+        names = [f"Model_{k}" for k in range(len(adatas))]
         objs = [adatas]
 
     objs_order = dict()
@@ -463,7 +463,7 @@ def fa_transfer_to_reference(
         obj_iterator = enumerate(objs)
 
     for k, obj in obj_iterator:
-        print(msg.format(k, k, len(objs)), flush=True)
+        print(msg.format(k, k+1, len(objs)), flush=True)
         if "pca" not in obj.uns.keys():
             if n_components is None:
                 n_comps = min(n_comps_start, len(obj) - 1, obj.shape[1] - 1)
