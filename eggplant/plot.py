@@ -343,12 +343,7 @@ def visualize_transfer(
 
     if attributes is not None:
         attributes = ut.obj_to_list(attributes)
-        keep_models = np.zeros(_adata.shape[1])
-        for attr in attributes:
-            attr_col = _adata.var.values == attr
-            attr_col = np.nansum(attr_col, axis=1) > 0
-            keep_models[attr_col] = 1
-        keep_models = keep_models.astype(bool)
+        keep_models = np.isin(_adata.var.values[:,1] , attributes)
         assert sum(keep_models) > 0, "Attribute(s) was/were not found."
     else:
         keep_models = np.ones(_adata.shape[1]).astype(bool)
