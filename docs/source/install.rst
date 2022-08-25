@@ -59,7 +59,7 @@ You can also install ``eggplant`` via ``pip``, by executing the command:
 
 .. code-block:: console
 
-                python3 -m pip spatial-eggplant
+                python3 -m pip install spatial-eggplant
 
 However, we **recommend** to use the GitHub alternative, as this will give you
 the most up-to-date version.
